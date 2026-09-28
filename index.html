@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ramen Bowl Builder</title>
+<meta name="description" content="Build a bowl of ramen from the bones up: broth parts, aromatics, tare and toppings, with live salt, umami and shopping-list maths.">
+<meta property="og:title" content="Ramen Bowl Builder">
+<meta property="og:description" content="Build a bowl of ramen from the bones up: broth parts, aromatics, tare and toppings, with live salt, umami and shopping-list maths.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#B71C2C">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23B71C2C'/%3E%3Ccircle cx='16' cy='16' r='11' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%23D9A55A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: a two-pane workbench. The tabbed builder fills the left; a sticky order slip on the right holds the live bowl and its checks. On phones the slip comes first. */
+:root{
+  --bg:#F1F2EF; --surface:#FFFFFF; --surface-2:#E7E9E4; --ink:#2A1D16; --ink-2:#655850; --line:#D6D8D1;
+  --accent:#B71C2C; --accent-soft:#F6E2E3; --accent-ink:#FFFFFF;
+  --ok:#2A7347; --ok-soft:#E0F0E6; --warn:#955709; --warn-soft:#F8EAD5;
+  --gel:#D29B2F; --flav:#8A3E1F; --both:#4E7B68;
+  --aro:#4A8435; --swe:#D5802A; --uma:#6E4C80; --mul:#46698C;
+  --bowl:#FFFFFF; --bowl-edge:#D5D3CC; --bowl-wall:#ECEAE4; --shadow:rgba(42,29,22,.15);
+  --f-display:"Dela Gothic One","Hiragino Kaku Gothic StdN","Arial Black",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --f-data:"DM Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r-s:6px; --r-m:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16110F; --surface:#211A16; --surface-2:#2D241F; --ink:#F2ECE6; --ink-2:#B2A59B; --line:#3B312B;
+    --accent:#E34B4F; --accent-soft:#3B1C1E; --accent-ink:#FFFFFF;
+    --ok:#66C48E; --ok-soft:#1C3325; --warn:#E8A94F; --warn-soft:#3B2B14;
+    --gel:#E3B24F; --flav:#CC7A50; --both:#7DAA96;
+    --aro:#80BC66; --swe:#EC9C4E; --uma:#AE8CC0; --mul:#82A0C0;
+    --bowl:#F0ECE6; --bowl-edge:#8F877E; --bowl-wall:#D8D2CA; --shadow:rgba(0,0,0,.55);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16110F; --surface:#211A16; --surface-2:#2D241F; --ink:#F2ECE6; --ink-2:#B2A59B; --line:#3B312B;
+  --accent:#E34B4F; --accent-soft:#3B1C1E; --accent-ink:#FFFFFF;
+  --ok:#66C48E; --ok-soft:#1C3325; --warn:#E8A94F; --warn-soft:#3B2B14;
+  --gel:#E3B24F; --flav:#CC7A50; --both:#7DAA96;
+  --aro:#80BC66; --swe:#EC9C4E; --uma:#AE8CC0; --mul:#82A0C0;
+  --bowl:#F0ECE6; --bowl-edge:#8F877E; --bowl-wall:#D8D2CA; --shadow:rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.lbl{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.jp{font-family:var(--f-body);font-weight:500;font-size:.62em;letter-spacing:.12em;color:var(--ink-2);vertical-align:.12em;margin-left:.3em}
+
+.page{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:18px 56px}
+@media (min-width:720px){.page{padding-inline:28px}}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between;padding-block:6px 18px;border-bottom:2px solid var(--ink);margin-bottom:22px}
+.brand{display:flex;gap:14px;align-items:center;min-width:0}
+.noren{font-family:var(--f-display);writing-mode:vertical-rl;background:var(--accent);color:var(--accent-ink);padding:9px 7px;border-radius:3px;font-size:17px;line-height:1;letter-spacing:.1em;flex:none}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,4.2vw,38px);line-height:1.05;letter-spacing:.005em}
+.lede{color:var(--ink-2);max-width:62ch;margin-top:6px;font-size:14.5px}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* buttons */
+.btn{appearance:none;font:700 13.5px/1 var(--f-body);padding:9px 14px;border-radius:var(--r-s);border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink-2);filter:none}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 10px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.armed{background:var(--warn);border-color:var(--warn);color:var(--bg)}
+.linkbtn{appearance:none;border:0;background:none;padding:0;color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:28px;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}.slip{order:-1;position:static!important;max-height:none!important}}
+
+/* tabs */
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:22px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{appearance:none;border:0;background:none;padding:10px 14px 11px;font-weight:700;font-size:15px;color:var(--ink-2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;position:relative}
+.tab small{font-size:11px;font-weight:500;letter-spacing:.1em}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tdot{position:absolute;top:10px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+
+/* panels */
+.panel-head{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.panel-head h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1}
+.panel-head p{color:var(--ink-2);max-width:58ch;margin-top:6px}
+.fields{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field .lbl{display:block}
+.inp{display:inline-flex;align-items:stretch;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-s);overflow:hidden;min-height:36px}
+.inp input{border:0;background:transparent;font:500 15px var(--f-data);font-variant-numeric:tabular-nums;width:6.5ch;padding:6px 2px 6px 10px;text-align:right;outline:none;min-width:0}
+.inp .u{display:flex;align-items:center;padding:0 10px 0 5px;color:var(--ink-2);font:13px var(--f-data)}
+.inp:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.inp button{border:0;background:var(--surface-2);color:var(--ink);width:32px;cursor:pointer;font:500 17px/1 var(--f-data);flex:none}
+.inp button:hover{background:var(--line)}
+.inp.sm{min-height:32px}
+.inp.sm input{width:5ch;font-size:14px}
+.inp.wide{flex:1;min-width:0}
+.inp.wide input{width:100%;text-align:left;font-family:var(--f-body);padding-left:10px}
+.derived{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:var(--ink-2);padding-bottom:8px}
+.derived b{font:500 14px var(--f-data);color:var(--ink)}
+
+/* stat strip */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);overflow:hidden;margin-bottom:16px}
+.stat{padding:12px 14px 13px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0;display:flex;flex-direction:column;gap:3px;min-width:0}
+.stat .v{font:500 23px/1.15 var(--f-data);font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px;color:var(--ink-2);margin-left:3px}
+.stat .s{font-size:12.5px;color:var(--ink-2)}
+.stat .chip{align-self:flex-start;margin-top:3px}
+.stat.wide{grid-column:span 2}
+@media (max-width:520px){.stat.wide{grid-column:auto}}
+
+/* chips, tags */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--surface-2);color:var(--ink-2)}
+.chip.ok{color:var(--ok);background:var(--ok-soft)}
+.chip.off{color:var(--warn);background:var(--warn-soft)}
+.chip.close{color:var(--ink-2);background:var(--surface-2)}
+.chip.ink{color:var(--bg);background:var(--ink)}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+.tag::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--c)}
+
+/* meters */
+.meter{position:relative;display:grid;grid-template-columns:40fr 20fr 40fr;gap:2px;height:10px;margin:6px 0 4px}
+.meter .z{border-radius:2px;opacity:.85}
+.meter .z1{background:var(--flav)}
+.meter .z2{background:var(--surface-2);border:1px solid var(--line)}
+.meter .z3{background:var(--gel)}
+.meter i{position:absolute;top:-5px;width:4px;height:20px;margin-left:-2px;background:var(--ink);border-radius:2px;box-shadow:0 0 0 2px var(--surface);transition:left .25s}
+.meter-scale{display:grid;grid-template-columns:40fr 20fr 40fr;font-size:11.5px;color:var(--ink-2)}
+.meter-scale span:nth-child(2){text-align:center}
+.meter-scale span:last-child{text-align:right}
+.stack{display:flex;height:12px;border-radius:3px;overflow:hidden;background:var(--surface-2);gap:1px}
+.stack span{height:100%;background:var(--c);transition:width .25s}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--ink-2);margin-top:7px}
+.legend b{font:500 12.5px var(--f-data);color:var(--ink);margin-left:2px}
+.card{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);padding:14px 16px}
+.card h3{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:10px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:16px}
+
+/* toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin:22px 0 6px}
+.toolbar .grp-l,.toolbar .grp-r{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface)}
+.seg button{appearance:none;border:0;background:none;padding:5px 11px;border-radius:999px;font-weight:700;font-size:13px;color:var(--ink-2);cursor:pointer}
+.seg button .cnt{font:400 11.5px var(--f-data);opacity:.75}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.sortl{display:inline-flex;gap:8px;align-items:center}
+select{appearance:none;border:1px solid var(--line);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23887a70'/%3E%3C/svg%3E") no-repeat right 10px center;border-radius:var(--r-s);padding:6px 28px 6px 10px;font-size:13.5px;font-weight:500;cursor:pointer}
+
+/* item lists */
+.list{border-top:1px solid var(--line)}
+.grp{padding:14px 4px 6px;border-bottom:1px solid var(--line)}
+.item{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(220px,1.25fr);gap:10px 20px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+@media (max-width:760px){.item{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.item .ctrl{grid-column:1 / -1}}
+@media (max-width:460px){.item{grid-template-columns:minmax(0,1fr)}}
+.item-main{min-width:0}
+.item-name{font-weight:700;display:flex;flex-wrap:wrap;gap:3px 10px;align-items:center}
+.item-name .sub{font-weight:700;color:var(--ink-2);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+.item-note{font-size:13px;color:var(--ink-2);margin-top:1px}
+.item.zero .item-name>span:not(.sub):not(.tag),.trow.zero .item-name{color:var(--ink-2);font-weight:500}
+.item.on{background:linear-gradient(90deg,var(--accent-soft),transparent 55%)}
+.scores{display:grid;gap:5px}
+.score{display:grid;grid-template-columns:64px 100px 20px;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
+.score b{font:500 12.5px var(--f-data);color:var(--ink);text-align:right}
+.ticks{display:grid;grid-template-columns:repeat(10,1fr);gap:2px}
+.ticks i{height:8px;border-radius:1px;background:var(--surface-2)}
+.ticks i.on{background:var(--c)}
+.ctrl{display:grid;grid-template-columns:minmax(0,1fr) auto 66px;gap:10px;align-items:center}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;cursor:pointer}
+.amt{font:13px var(--f-data);color:var(--ink-2);text-align:right;white-space:nowrap}
+.item.on .amt{color:var(--ink)}
+
+/* tare rows */
+.legend-line{font-size:12.5px;color:var(--ink-2);margin:6px 0 2px}
+.trow{display:grid;grid-template-columns:minmax(0,1fr) auto 150px;gap:8px 18px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line)}
+@media (max-width:600px){.trow{grid-template-columns:minmax(0,1fr) auto}.trow .tout{grid-column:1 / -1;text-align:left;flex-direction:row;gap:14px}}
+.trow.on{background:linear-gradient(90deg,var(--accent-soft),transparent 55%)}
+.facts{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:5px}
+.facts span{font:11.5px var(--f-data);color:var(--ink-2);background:var(--surface-2);padding:1px 6px;border-radius:4px}
+.tout{display:flex;flex-direction:column;align-items:flex-end;font:13px var(--f-data);color:var(--ink-2);text-align:right}
+.trow.on .tout span:first-child{color:var(--ink)}
+.warnline{color:var(--warn);font-weight:700;font-size:12.5px;margin-top:4px}
+
+/* tables */
+.tablewrap{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.t td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t .num{font-family:var(--f-data);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+table.t th.num{text-align:right}
+table.t td.note{color:var(--ink-2);font-size:13px}
+table.t tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--ink)}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 14px;font-size:14px;align-items:baseline}
+.kv span:nth-child(3n+2),.kv span:nth-child(3n){font-family:var(--f-data);font-variant-numeric:tabular-nums;text-align:right}
+.kv span:nth-child(3n){color:var(--ink-2);font-size:13px}
+.kv .hr{grid-column:1 / -1;border-top:1px solid var(--line);margin:2px 0}
+.note-s{font-size:12.5px;color:var(--ink-2);margin-top:10px;max-width:70ch}
+details.more{margin-top:12px;font-size:13.5px}
+details.more summary{cursor:pointer;font-weight:700;color:var(--ink-2)}
+details.more[open] summary{margin-bottom:10px}
+
+/* toppings */
+.tops{display:grid;gap:16px}
+.tcard{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);padding:16px 18px;display:grid;gap:14px}
+.tcard-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.tcard h3{font-family:var(--f-display);font-weight:400;font-size:20px;line-height:1.15}
+.tcard.off .tbody{opacity:.5}
+.tbody{display:grid;gap:14px;transition:opacity .2s}
+.method{font-size:14px;max-width:72ch}
+.method .lbl{margin-right:6px}
+.switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-weight:700;font-size:13.5px;user-select:none}
+.switch input{appearance:none;-webkit-appearance:none;width:40px;height:23px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);position:relative;cursor:pointer;transition:background .2s;margin:0;flex:none}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:var(--bowl);box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .2s}
+.switch input:checked{background:var(--accent);border-color:var(--accent)}
+.switch input:checked::after{transform:translateX(17px)}
+
+/* shopping */
+.aisle{margin-top:22px}
+.aisle h3{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);padding-bottom:6px;border-bottom:2px solid var(--ink)}
+.shop-item{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:2px 10px;padding:9px 2px;border-bottom:1px solid var(--line);align-items:start}
+.shop-item input{margin:3px 0 0;width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.shop-item label{font-weight:700;cursor:pointer;min-width:0}
+.shop-item .qty{font:500 14px var(--f-data);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.shop-item .from{grid-column:2 / -1;font-size:12.5px;color:var(--ink-2)}
+.shop-item.done label,.shop-item.done .qty{text-decoration:line-through;color:var(--ink-2)}
+.notes textarea{width:100%;min-height:170px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface);padding:10px 12px;font-size:14px;line-height:1.55;resize:vertical}
+.notes textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#copyFallback{width:100%;min-height:140px;font:13px var(--f-data);margin-top:8px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface);padding:8px}
+.msg{font-size:13px;color:var(--ink-2);min-height:1.2em}
+
+/* order slip */
+.slip{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin}
+.slip>*{flex-shrink:0}
+.slip-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.slip-head h2{font-family:var(--f-display);font-weight:400;font-size:21px}
+.slip-head .mono{font-size:13px;color:var(--ink-2)}
+#bowl{display:block;width:100%;max-width:310px;height:auto;margin:0 auto}
+@media (max-width:980px){#bowl{max-width:250px}}
+.caption{font-size:12.5px;color:var(--ink-2);text-align:center;margin-top:-6px}
+.assembly{list-style:none;margin:0;padding:0;counter-reset:a;border-top:1px dashed var(--line)}
+.assembly li{counter-increment:a;display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px;align-items:baseline}
+.assembly li::before{content:counter(a);font:500 12px var(--f-data);color:var(--accent)}
+.assembly .v{font:13px var(--f-data);color:var(--ink-2);text-align:right;white-space:nowrap}
+.checks{display:grid;gap:6px}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.4}
+.check::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--ink-2)}
+.check.off::before{background:var(--warn)}
+.check.ok::before{background:var(--ok)}
+.check .linkbtn{font-size:12.5px;margin-left:4px}
+.ro{display:grid;gap:14px}
+.ro-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ro-val{font:500 17px var(--f-data);font-variant-numeric:tabular-nums;margin-top:4px}
+.ro-sub{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.saved{border-top:2px solid var(--ink);padding-top:14px;display:grid;gap:10px}
+.saved h3{font-family:var(--f-display);font-weight:400;font-size:17px}
+.saveform{display:flex;gap:8px}
+.saved-list{list-style:none;margin:0;padding:0;display:grid}
+.saved-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.saved-list li.empty{display:block;color:var(--ink-2);font-size:13px;border:0;padding:2px 0}
+.sv-name{font-weight:700;overflow-wrap:anywhere}
+.sv-meta{font-size:12px;color:var(--ink-2)}
+.sv-act{display:flex;gap:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* bowl drawing */
+#bowl .shadow{fill:var(--shadow)}
+#bowl .outer{fill:var(--bowl);stroke:var(--bowl-edge);stroke-width:1.5}
+#bowl .ring{fill:none;stroke:var(--accent);stroke-width:1.6}
+#bowl .raimon path{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:square}
+#bowl .rimline{fill:none;stroke:var(--bowl-edge);stroke-width:1}
+#brothBase,#brothTop{transition:fill .35s,opacity .35s}
+#bowl .noodle{fill:none;stroke:#E4BF58;stroke-width:6.5;stroke-linecap:round}
+#bowl .noodle-sh{fill:none;stroke:#7A561A;stroke-opacity:.35;stroke-width:9;stroke-linecap:round}
+#bowl .drop{fill:rgba(255,246,222,.3);stroke:rgba(255,252,240,.7);stroke-width:1}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div class="brand">
+      <span class="noren" aria-hidden="true">拉麺</span>
+      <div>
+        <h1>Ramen Bowl Builder</h1>
+        <p class="lede">Tune a bowl of ramen from the bones up. Change the broth parts, aromatics, tare and toppings, and every number, check and shopping amount recalculates.</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="btn ghost" id="resetBtn">Start over</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main>
+      <nav class="tabs" role="tablist" aria-label="Bowl sections">
+        <button type="button" class="tab" role="tab" id="tab-broth" aria-controls="p-broth" data-tab="broth">Broth<small>スープ</small><span class="tdot" data-dot="broth" hidden></span></button>
+        <button type="button" class="tab" role="tab" id="tab-aromatics" aria-controls="p-aromatics" data-tab="aromatics">Aromatics<small>香味野菜</small><span class="tdot" data-dot="aromatics" hidden></span></button>
+        <button type="button" class="tab" role="tab" id="tab-tare" aria-controls="p-tare" data-tab="tare">Tare<small>タレ</small><span class="tdot" data-dot="tare" hidden></span></button>
+        <button type="button" class="tab" role="tab" id="tab-toppings" aria-controls="p-toppings" data-tab="toppings">Toppings<small>トッピング</small></button>
+        <button type="button" class="tab" role="tab" id="tab-shopping" aria-controls="p-shopping" data-tab="shopping">Shopping<small>買い物</small></button>
+      </nav>
+
+      <!-- BROTH -->
+      <section id="p-broth" role="tabpanel" aria-labelledby="tab-broth">
+        <div class="panel-head">
+          <div>
+            <h2>Broth <span class="jp">スープ</span></h2>
+            <p>Chicken and pork parts, scored 1–10 for gelatin and flavor. Set each part's share of the mix; the shares need to add up to 100%.</p>
+          </div>
+          <div class="fields">
+            <div class="field"><label class="lbl" for="bKg">Total bones &amp; meat</label><span class="inp"><input type="number" id="bKg" min="0" step="0.1" inputmode="decimal" data-bind="broth.totalKg"><span class="u">kg</span></span></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="lbl">Gelatin index</span><span class="v" data-o="b-gel"></span><span class="s">weighted, 1–10</span></div>
+          <div class="stat"><span class="lbl">Flavor index</span><span class="v" data-o="b-flav"></span><span class="s">weighted, 1–10</span></div>
+          <div class="stat"><span class="lbl">Gelatin : flavor</span><span class="v" data-o="b-ratio"></span><span class="s" data-o="b-animal"></span></div>
+          <div class="stat wide"><span class="lbl">Priority</span>
+            <div class="meter" aria-hidden="true"><span class="z z1"></span><span class="z z2"></span><span class="z z3"></span><i data-marker="b"></i></div>
+            <div class="meter-scale" aria-hidden="true"><span>Flavor ≤40%</span><span>Balanced</span><span>Gelatin ≥60%</span></div>
+            <span class="s" data-o="b-share"></span>
+            <span class="chip" data-chip="b-priority"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Mix by type</h3>
+          <div class="stack" data-stack="b-type"></div>
+          <div class="legend" data-legend="b-type"></div>
+        </div>
+        <div class="toolbar">
+          <div class="grp-l">
+            <div class="seg" role="group" aria-label="Filter by type" id="bSeg"></div>
+            <label class="sortl"><span class="lbl">Sort</span>
+              <select id="bSort"><option value="sheet">Spreadsheet order</option><option value="gel">Gelatin, high to low</option><option value="flav">Flavor, high to low</option><option value="mix">Share of mix</option></select></label>
+          </div>
+          <div class="grp-r">
+            <span class="chip" data-chip="b-total"></span>
+            <button type="button" class="btn ghost sm" id="bBalance">Scale to 100%</button>
+          </div>
+        </div>
+        <div class="list" id="bList"></div>
+      </section>
+
+      <!-- AROMATICS -->
+      <section id="p-aromatics" role="tabpanel" aria-labelledby="tab-aromatics" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Aromatics <span class="jp">香味野菜</span></h2>
+            <p>Vegetables and aromatics, scored 1–10 for aroma, sweetness and umami. Set each one's share of the vegetable portion.</p>
+          </div>
+          <div class="fields">
+            <div class="field"><label class="lbl" for="vG">Total vegetables</label><span class="inp"><input type="number" id="vG" min="0" step="10" inputmode="decimal" data-bind="veg.totalG"><span class="u">g</span></span></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="lbl">Aroma index</span><span class="v" data-o="v-aroma"></span><span class="s">weighted, 1–10</span></div>
+          <div class="stat"><span class="lbl">Sweetness index</span><span class="v" data-o="v-sweet"></span><span class="s">weighted, 1–10</span></div>
+          <div class="stat"><span class="lbl">Umami index</span><span class="v" data-o="v-umami"></span><span class="s">weighted, 1–10</span></div>
+          <div class="stat"><span class="lbl">Dominant character</span><span class="v" data-o="v-dom"></span><span class="s">highest weighted index</span></div>
+        </div>
+        <div class="card">
+          <h3>Mix by role</h3>
+          <div class="stack" data-stack="v-role"></div>
+          <div class="legend" data-legend="v-role"></div>
+        </div>
+        <div class="toolbar">
+          <div class="grp-l">
+            <div class="seg" role="group" aria-label="Filter by role" id="vSeg"></div>
+            <label class="sortl"><span class="lbl">Sort</span>
+              <select id="vSort"><option value="sheet">Spreadsheet order</option><option value="aroma">Aroma, high to low</option><option value="sweet">Sweetness, high to low</option><option value="umami">Umami, high to low</option><option value="mix">Share of mix</option></select></label>
+          </div>
+          <div class="grp-r">
+            <span class="chip" data-chip="v-total"></span>
+            <button type="button" class="btn ghost sm" id="vBalance">Scale to 100%</button>
+          </div>
+        </div>
+        <div class="list" id="vList"></div>
+      </section>
+
+      <!-- TARE -->
+      <section id="p-tare" role="tabpanel" aria-labelledby="tab-tare" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Tare <span class="jp">タレ</span></h2>
+            <p>The seasoning at the bottom of the bowl. Salt content is % by weight, and 1 ml counts as 1 g for these liquids.</p>
+          </div>
+        </div>
+        <div class="fields" style="margin-bottom:12px">
+          <div class="field"><label class="lbl" for="tBowl">Bowl size</label><span class="inp"><input type="number" id="tBowl" min="0" step="10" inputmode="decimal" data-bind="tare.bowlMl"><span class="u">ml</span></span></div>
+          <div class="field"><label class="lbl" for="tPct">Tare, % of bowl</label><span class="inp"><input type="number" id="tPct" min="0" max="100" step="0.5" inputmode="decimal" data-bind="tare.tarePct"><span class="u">%</span></span></div>
+          <div class="field"><label class="lbl" for="tSalt">Target salt, % of tare</label><span class="inp"><input type="number" id="tSalt" min="0" max="100" step="0.5" inputmode="decimal" data-bind="tare.saltPct"><span class="u">%</span></span></div>
+          <div class="derived">
+            <span>Tare volume <b data-o="t-tv"></b></span>
+            <span>Target salt <b data-o="t-ts"></b></span>
+            <span>Bowl salinity <b data-o="t-tsb"></b></span>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="lbl">Tare made</span><span class="v" data-o="t-vol"></span><span class="s" data-o="t-vol-s"></span><span class="chip" data-chip="t-vol"></span></div>
+          <div class="stat"><span class="lbl">Salt made</span><span class="v" data-o="t-salt"></span><span class="s" data-o="t-salt-s"></span><span class="chip" data-chip="t-salt"></span></div>
+          <div class="stat"><span class="lbl">Salt, % of tare</span><span class="v" data-o="t-saltpct"></span><span class="s" data-o="t-saltpct-s"></span></div>
+          <div class="stat"><span class="lbl">Bowl salinity</span><span class="v" data-o="t-bowlsal"></span><span class="s" data-o="t-bowlsal-s"></span></div>
+        </div>
+        <div class="toolbar">
+          <div class="grp-l"><div class="seg" role="group" aria-label="Show ingredients" id="tSeg"></div></div>
+        </div>
+        <p class="legend-line">glu = glutamate, IMP = inosinate, GMP = guanylate, all in mg per 100 ml.</p>
+        <div class="list" id="tList"></div>
+
+        <div class="two" style="margin-top:22px">
+          <div class="card">
+            <h3>Tare composition</h3>
+            <div class="kv">
+              <span>Salt</span><span data-o="c-salt"></span><span data-o="c-salt-g"></span>
+              <span>Sugar</span><span data-o="c-sugar"></span><span data-o="c-sugar-g"></span>
+              <span>Acidity</span><span data-o="c-acid"></span><span data-o="c-acid-g"></span>
+              <span class="hr"></span>
+              <span>Salt : sugar</span><span data-o="c-ss"></span><span>g salt per 1 g sugar</span>
+              <span>Salt : acid</span><span data-o="c-sa"></span><span>g salt per 1 g acid</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Umami profile, mg in tare</h3>
+            <div class="kv">
+              <span>Glutamate</span><span data-o="u-glu"></span><span data-o="u-glu-p"></span>
+              <span>Inosinate (IMP, meat &amp; fish)</span><span data-o="u-imp"></span><span data-o="u-imp-p"></span>
+              <span>Guanylate (GMP, dried mushroom)</span><span data-o="u-gmp"></span><span data-o="u-gmp-p"></span>
+              <span class="hr"></span>
+              <span>Total nucleotides</span><span data-o="u-nuc"></span><span data-o="u-nuc-p"></span>
+              <span>Total umami compounds</span><span data-o="u-tot"></span><span></span>
+              <span>Glutamate : nucleotide</span><span data-o="u-gn"></span><span>per 1 mg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <h3>Umami synergy in the bowl (Yamaguchi EUC)</h3>
+          <div class="stats" style="margin-bottom:10px">
+            <div class="stat"><span class="lbl">Glutamate</span><span class="v" data-o="s-glu"></span><span class="s">mg per 100 ml of bowl</span></div>
+            <div class="stat"><span class="lbl">Weighted nucleotides</span><span class="v" data-o="s-nuc"></span><span class="s">mg per 100 ml of bowl</span></div>
+            <div class="stat"><span class="lbl">EUC</span><span class="v" data-o="s-euc"></span><span class="s">g MSG-equivalent per 100 ml. This is what you taste.</span></div>
+            <div class="stat"><span class="lbl">Synergy multiplier</span><span class="v" data-o="s-mult"></span><span class="s" data-o="s-hint"></span><span class="chip" data-chip="s-verdict"></span></div>
+          </div>
+          <p class="note-s" data-o="s-range"></p>
+          <details class="more">
+            <summary>Synergy constants</summary>
+            <div class="fields">
+              <div class="field"><label class="lbl" for="sW">GMP weighting vs IMP</label><span class="inp"><input type="number" id="sW" min="0" step="0.1" inputmode="decimal" data-bind="tare.gmpWeight"><span class="u">×</span></span></div>
+              <div class="field"><label class="lbl" for="sK">Synergy constant</label><span class="inp"><input type="number" id="sK" min="0" step="1" inputmode="decimal" data-bind="tare.synergyK"></span></div>
+            </div>
+            <p class="note-s">The synergy constant is an empirical coefficient from Yamaguchi's trained-panel taste experiments (Ajinomoto Central Research Labs; Yamaguchi 1967, J. Food Science 32:473). It is fitted, not derived, and only valid with concentrations in g/100 ml over roughly 0.01–0.5 g/100 ml. That is why only the per-bowl figure is shown here.</p>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>Tare batch scaler</h3>
+          <div class="fields" style="margin-bottom:12px">
+            <div class="field"><label class="lbl" for="tBatch">Batch tare volume</label><span class="inp"><input type="number" id="tBatch" min="0" step="50" inputmode="decimal" data-bind="tare.batchMl"><span class="u">ml</span></span></div>
+            <div class="derived"><span>Covers <b data-o="t-bowls"></b> bowls</span><span>Salt in batch <b data-o="t-bsaltpct"></b></span></div>
+          </div>
+          <div class="tablewrap">
+            <table class="t">
+              <thead><tr><th>Ingredient</th><th class="num">% of tare</th><th class="num">Per bowl</th><th class="num">Batch</th><th class="num">Salt in batch</th></tr></thead>
+              <tbody id="batchBody"></tbody>
+              <tfoot><tr><td>Total</td><td class="num" data-o="bt-share"></td><td class="num" data-o="bt-bowl"></td><td class="num" data-o="bt-batch"></td><td class="num" data-o="bt-salt"></td></tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TOPPINGS -->
+      <section id="p-toppings" role="tabpanel" aria-labelledby="tab-toppings" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Toppings <span class="jp">トッピング</span></h2>
+            <p>Each recipe scales from the yield it was written for. Switch a topping off to take it out of the bowl and the shopping list.</p>
+          </div>
+        </div>
+        <div class="tops" id="tops"></div>
+      </section>
+
+      <!-- SHOPPING -->
+      <section id="p-shopping" role="tabpanel" aria-labelledby="tab-shopping" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Shopping <span class="jp">買い物</span></h2>
+            <p>Everything in use, added up across sections so each ingredient appears once. Mixed units are converted to grams.</p>
+          </div>
+        </div>
+        <div class="fields" style="margin-bottom:6px">
+          <div class="field"><label class="lbl" for="sKg">Bones &amp; meat</label><span class="inp"><input type="number" id="sKg" min="0" step="0.1" inputmode="decimal" data-bind="broth.totalKg"><span class="u">kg</span></span></div>
+          <div class="field"><label class="lbl" for="sG">Vegetables</label><span class="inp"><input type="number" id="sG" min="0" step="10" inputmode="decimal" data-bind="veg.totalG"><span class="u">g</span></span></div>
+          <div class="field"><label class="lbl" for="sBatch">Tare batch</label><span class="inp"><input type="number" id="sBatch" min="0" step="50" inputmode="decimal" data-bind="tare.batchMl"><span class="u">ml</span></span></div>
+          <div class="derived"><span>Covers <b data-o="t-bowls"></b> bowls of tare</span></div>
+        </div>
+        <div class="toolbar">
+          <span class="lbl" data-o="shop-count"></span>
+          <div class="grp-r">
+            <button type="button" class="btn" id="copyShop">Copy list</button>
+            <button type="button" class="btn ghost" id="clearTicks">Clear ticks</button>
+          </div>
+        </div>
+        <p class="msg" id="copyMsg" role="status"></p>
+        <textarea id="copyFallback" readonly hidden aria-label="Shopping list text"></textarea>
+        <div id="shopList"></div>
+        <details class="more">
+          <summary>How amounts are converted</summary>
+          <div class="tablewrap">
+            <table class="t" style="max-width:560px">
+              <thead><tr><th>Unit</th><th class="num">Grams per unit</th><th>Basis</th></tr></thead>
+              <tbody id="convBody"></tbody>
+            </table>
+          </div>
+        </details>
+        <div class="notes" style="margin-top:26px">
+          <label class="lbl" for="notes" style="display:block;margin-bottom:6px">Prep notes</label>
+          <textarea id="notes" data-bind-text="notes" spellcheck="true" placeholder="Prep steps, timings, what to change next time. Notes stay in this browser and are saved with each bowl."></textarea>
+        </div>
+      </section>
+    </main>
+
+    <aside class="slip" aria-label="Your bowl">
+      <div class="slip-head"><h2>Your bowl</h2><span class="mono" data-o="slip-size"></span></div>
+      <svg id="bowl" viewBox="0 0 400 400" role="img" aria-labelledby="bowlTitle bowlDesc">
+        <title id="bowlTitle">Your bowl, seen from above</title>
+        <desc id="bowlDesc"></desc>
+        <defs>
+          <clipPath id="cBroth"><circle cx="200" cy="200" r="149"></circle></clipPath>
+          <radialGradient id="gWall" cx="50%" cy="50%" r="50%">
+            <stop offset="0.86" style="stop-color:var(--bowl)"></stop>
+            <stop offset="1" style="stop-color:var(--bowl-wall)"></stop>
+          </radialGradient>
+          <radialGradient id="gSheen" cx="42%" cy="36%" r="70%">
+            <stop offset="0" stop-color="#ffffff" stop-opacity=".26"></stop>
+            <stop offset=".55" stop-color="#ffffff" stop-opacity="0"></stop>
+            <stop offset="1" stop-color="#000000" stop-opacity=".28"></stop>
+          </radialGradient>
+        </defs>
+        <ellipse class="shadow" cx="206" cy="210" rx="193" ry="191"></ellipse>
+        <circle class="outer" cx="200" cy="200" r="192"></circle>
+        <circle class="ring" cx="200" cy="200" r="185"></circle>
+        <g class="raimon" id="raimon"></g>
+        <circle class="ring" cx="200" cy="200" r="165"></circle>
+        <circle cx="200" cy="200" r="161" fill="url(#gWall)"></circle>
+        <g clip-path="url(#cBroth)">
+          <circle id="brothBase" cx="200" cy="200" r="149"></circle>
+          <g id="noodles"></g>
+          <circle id="brothTop" cx="200" cy="200" r="149"></circle>
+          <circle cx="200" cy="200" r="149" fill="url(#gSheen)"></circle>
+          <g id="fat"></g>
+          <g id="toppingsArt"></g>
+        </g>
+        <circle class="rimline" cx="200" cy="200" r="149"></circle>
+      </svg>
+      <p class="caption">Broth colour follows your tare. Cloudiness follows the gelatin and fat in your bones.</p>
+      <ol class="assembly" id="assembly" aria-label="Assembly order"></ol>
+      <div class="checks" id="checks" aria-live="polite"></div>
+      <div class="ro">
+        <div>
+          <div class="ro-top"><span class="lbl">Broth</span><span class="chip" data-chip="ro-b"></span></div>
+          <div class="meter" aria-hidden="true"><span class="z z1"></span><span class="z z2"></span><span class="z z3"></span><i data-marker="ro-b"></i></div>
+          <div class="ro-sub" data-o="ro-b-sub"></div>
+        </div>
+        <div>
+          <div class="ro-top"><span class="lbl">Aromatics</span><span class="chip" data-chip="ro-v"></span></div>
+          <div class="stack" data-stack="ro-v" style="margin-top:8px"></div>
+          <div class="ro-sub" data-o="ro-v-sub"></div>
+        </div>
+        <div>
+          <div class="ro-top"><span class="lbl">Salt</span><span class="chip" data-chip="ro-s"></span></div>
+          <div class="ro-val" data-o="ro-s-val"></div>
+          <div class="ro-sub" data-o="ro-s-sub"></div>
+        </div>
+        <div>
+          <div class="ro-top"><span class="lbl">Umami</span><span class="chip" data-chip="ro-u"></span></div>
+          <div class="ro-val" data-o="ro-u-val"></div>
+          <div class="ro-sub" data-o="ro-u-sub"></div>
+        </div>
+      </div>
+      <p class="msg" id="slipMsg" role="status"></p>
+      <div class="saved">
+        <h3>Saved bowls</h3>
+        <form class="saveform" id="saveForm" hidden>
+          <span class="inp wide"><input type="text" id="saveName" maxlength="60" placeholder="Name this bowl" aria-label="Bowl name" autocomplete="off"></span>
+          <button type="submit" class="btn accent" id="saveBtn">Save</button>
+        </form>
+        <p class="msg" id="saveMsg" role="status"></p>
+        <ul class="saved-list" id="savedList"><li class="empty">Loading saved bowls…</li></ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const num = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+const sum = a => a.reduce((x, y) => x + y, 0);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const fx = (n, d = 1) => Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const tr = (n, d = 1) => Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: d }) : '—';
+const pc = (f, d = 0) => fx(f * 100, d) + '%';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+
+/* ---------- data from Ramen.xlsx ---------- */
+const brothType = (g, f) => (g >= 7 && f >= 7) ? 'Both' : (g >= f ? 'Gelatin' : 'Flavor');
+const vegRole = (a, s, u) => ([a, s, u].filter(x => x >= 7).length >= 2) ? 'Multi' : (a >= s && a >= u) ? 'Aromatic' : (s >= u ? 'Sweetness' : 'Umami');
+
+const PARTS = [
+  ['chicken-feet', 'Chicken', 'Feet', 10, 2, 0, 'Pure collagen, almost no flavor'],
+  ['chicken-wings', 'Chicken', 'Wings', 8, 6, 30, 'Skin + cartilage + some meat'],
+  ['chicken-necks', 'Chicken', 'Necks', 7, 7, 0, 'Great all-rounder'],
+  ['chicken-backs', 'Chicken', 'Backs / frames', 5, 8, 0, 'Workhorse flavor bone'],
+  ['chicken-carcass', 'Chicken', 'Carcass (stripped)', 4, 7, 0, 'Cheap bulk flavor'],
+  ['chicken-skin', 'Chicken', 'Skin', 6, 7, 0, 'Fat + body, emulsifies well'],
+  ['chicken-thigh', 'Chicken', 'Thigh meat', 2, 9, 30, 'Pure savory depth'],
+  ['chicken-heads', 'Chicken', 'Heads', 6, 8, 0, 'Strong, slightly funky'],
+  ['pork-trotters', 'Pork', 'Trotters / feet', 10, 3, 10, 'Gelatin king, needs flavor partners'],
+  ['pork-skin', 'Pork', 'Skin / rind', 9, 2, 0, 'Body and viscosity only'],
+  ['pork-head', 'Pork', 'Head (half)', 7, 8, 0, 'Classic tonkotsu backbone'],
+  ['pork-neck', 'Pork', 'Neck bones', 5, 9, 30, 'Meaty, deeply savory'],
+  ['pork-femur', 'Pork', 'Femur / leg bone', 4, 8, 0, 'Marrow fat, whitens broth'],
+  ['pork-ribs', 'Pork', 'Ribs', 4, 8, 0, 'Meat-on-bone flavor'],
+  ['pork-shoulder', 'Pork', 'Shoulder / picnic', 3, 9, 0, 'Chashu trim, big flavor'],
+  ['pork-backfat', 'Pork', 'Back fat', 1, 6, 0, 'Richness, not gelatin']
+].map(([id, animal, part, gel, flav, pct, note], i) => ({ id, animal, part, gel, flav, pct, note, i, type: brothType(gel, flav) }));
+
+const VEG = [
+  ['negi', 'Negi / leek (green tops)', 9, 4, 3, 20, 'Classic ramen aromatic; cuts pork funk'],
+  ['onion', 'Yellow onion', 6, 9, 4, 20, 'Backbone sweetness, use halved & charred'],
+  ['garlic', 'Garlic', 9, 3, 5, 5, 'Add late; long boil turns it bitter'],
+  ['ginger', 'Ginger', 9, 2, 2, 10, 'Deodorizer for pork and chicken'],
+  ['carrot', 'Carrot', 3, 8, 2, 0, 'Sweetness; too much makes broth cloying'],
+  ['cabbage', 'Cabbage', 3, 7, 3, 0, 'Gentle sweetness, common in tonkotsu'],
+  ['shiitake', 'Dried shiitake', 6, 3, 10, 25, 'Guanylate; huge umami synergy with kombu'],
+  ['kombu', 'Kombu', 3, 3, 10, 0, 'Glutamate; steep below 65°C, never boil'],
+  ['scallion', 'Scallion (whites)', 7, 4, 3, 20, 'Sharper than negi, good for shoyu'],
+  ['celery', 'Celery', 5, 4, 3, 0, 'Western touch; keep it minimal'],
+  ['apple', 'Apple', 4, 9, 2, 0, 'Common in tori paitan for rounding'],
+  ['sprouts', 'Bean sprouts', 2, 5, 3, 0, 'Mostly for tonkotsu body/sweetness'],
+  ['tomato', 'Dried tomato', 4, 6, 8, 0, 'Non-traditional but big glutamate hit'],
+  ['corn', 'Corn cobs', 3, 8, 3, 0, 'Miso ramen; sweet and starchy body']
+].map(([id, name, aroma, sweet, umami, pct, note], i) => ({ id, name, aroma, sweet, umami, pct, note, i, role: vegRole(aroma, sweet, umami) }));
+
+// [id, name, group, salt, amount, sugar, acid, glutamate, inosinate, guanylate, note, unit]
+const TARE = [
+  ['salt', 'Salt (fine sea salt)', 'seas', 1, 1.9, 0, 0, 0, 0, 0, 'Pure NaCl — 1 g = 1 g salt', 'g'],
+  ['koikuchi', 'Koikuchi shoyu (dark soy)', 'seas', 0.16, 12, 0.01, 0.012, 1100, 0, 0, 'Default shoyu tare base', 'ml'],
+  ['usukuchi', 'Usukuchi shoyu (light soy)', 'seas', 0.18, 0, 0.01, 0.012, 700, 0, 0, 'Saltier than dark, paler colour', 'ml'],
+  ['tamari', 'Tamari', 'seas', 0.14, 0, 0.01, 0.01, 1400, 0, 0, 'Wheat-free, rounder flavour', 'ml'],
+  ['shiro-miso', 'White miso (shiro)', 'seas', 0.055, 0, 0.22, 0.005, 200, 0, 0, 'Sweet, low salt — needs volume', 'g'],
+  ['aka-miso', 'Red miso (aka)', 'seas', 0.13, 0, 0.08, 0.008, 500, 0, 0, 'Punchy, high salt', 'g'],
+  ['fish', 'Fish sauce', 'seas', 0.24, 0, 0.005, 0.005, 1300, 20, 0, 'Saltiest liquid here, use sparingly', 'ml'],
+  ['oyster', 'Oyster sauce', 'seas', 0.11, 0, 0.25, 0.005, 900, 10, 0, 'Sweet, thick, adds body', 'ml'],
+  ['shiro-dashi', 'Shiro dashi', 'seas', 0.10, 0, 0.05, 0.005, 600, 30, 5, 'Pre-seasoned dashi concentrate', 'ml'],
+  ['msg', 'MSG', 'seas', 0.21, 0.5, 0, 0, 78000, 0, 0, 'Salt-equivalent, not actual NaCl', 'g'],
+  ['mirin', 'Mirin', 'sweet', 0.002, 3, 0.43, 0.002, 20, 0, 0, 'Sweetness and gloss, almost no salt', 'ml'],
+  ['sake', 'Sake', 'sweet', 0, 3, 0.04, 0.004, 30, 0, 0, 'Aroma and depth, no salt', 'ml'],
+  ['kombu-dashi', 'Kombu dashi', 'dashi', 0.002, 5, 0.003, 0.001, 250, 0, 0, 'Umami carrier, dilutes salt %', 'ml'],
+  ['scallop', 'Dried scallop / shellfish extract', 'seas', 0.05, 0, 0.05, 0.003, 400, 100, 0, 'Deep seafood umami', 'ml'],
+  ['sugar', 'Sugar', 'sweet', 0, 0, 1, 0, 0, 0, 0, 'Balances salt perception', 'g'],
+  ['katsuo-dashi', 'Katsuobushi dashi', 'dashi', 0.002, 5, 0.002, 0.001, 30, 35, 0, 'Main inosinate source', 'ml'],
+  ['shiitake-dashi', 'Dried shiitake dashi', 'dashi', 0.002, 5, 0.003, 0.001, 70, 0, 15, 'Main guanylate source', 'ml'],
+  ['niboshi-dashi', 'Niboshi dashi', 'dashi', 0.004, 5, 0.002, 0.001, 40, 45, 0, 'Sardine; strong inosinate, bitter if boiled', 'ml'],
+  ['vinegar', 'Rice vinegar', 'sweet', 0, 0, 0.005, 0.05, 0, 0, 0, 'Brightness; keep under 5% of tare', 'ml']
+].map(([id, name, group, salt, ml, sugar, acid, glu, imp, gmp, note, unit], i) => ({ id, name, group, salt, ml, sugar, acid, glu, imp, gmp, note, unit, i }));
+const TARE_GROUPS = [['seas', 'Salt & seasoning'], ['sweet', 'Sweet, sour & alcohol'], ['dashi', 'Dashi']];
+
+const TOPS = [
+  { id: 'chashu', short: 'Chashu', name: 'Chashu', jp: 'チャーシュー', sub: 'Rolled pork belly', base: 8,
+    ings: [['Pork belly (skin off)', 900, 'g', 'Roll tight and tie; or use shoulder for leaner'], ['Koikuchi shoyu', 240, 'ml', 'Braising liquid base'], ['Mirin', 120, 'ml', 'Gloss and sweetness'], ['Sake', 120, 'ml', 'Simmer off the alcohol first'], ['Water', 360, 'ml', 'Top up so the roll is 2/3 submerged'], ['Sugar', 50, 'g', 'Helps the glaze and colour'], ['Garlic', 6, 'cloves', 'Crushed, skin on'], ['Ginger', 2, 'inches', 'Sliced coins'], ['Black Peppercorns', 8, '', ''], ['Scallion / negi greens', 4, 'stalks', 'The tops you trimmed off for the broth']],
+    method: 'Sear rolled belly, braise 2–3 h at 90°C until probe-tender, cool in liquid overnight, slice cold, torch to serve. Reserve the liquid; it is a ready-made shoyu tare.' },
+  { id: 'tamago', short: 'Tamago', name: 'Ajitsuke tamago', jp: '味玉', sub: 'Marinated egg', base: 6,
+    ings: [['Eggs (large, fridge cold)', 6, 'count', '6 min 30 s boil for jammy yolk'], ['Koikuchi shoyu', 100, 'ml', 'Marinade base'], ['Mirin', 50, 'ml', 'Sweetness'], ['Sake', 25, 'ml', 'Simmer off alcohol, then cool'], ['Water', 100, 'ml', 'Dilutes so eggs do not over-cure'], ['Sugar', 15, 'g', 'Balances the soy'], ['Kombu', 3, 'g', 'Cold steep in the marinade']],
+    method: 'Boil 6 min 30 s, ice bath, peel. Marinate 6–12 h in a bag so they stay submerged. Longer than 24 h turns the whites rubbery and salty.' },
+  { id: 'lard', short: 'Lard', name: 'Aromatic lard', jp: '香味油', sub: 'Garlic & ginger oil', base: 16,
+    ings: [['Lard (rendered pork fat)', 240, 'ml', 'Backfat trim from the broth renders down perfectly'], ['Garlic', 1, 'head', 'Cloves peeled and thinly sliced'], ['Ginger', 3, 'inch', 'Peeled, sliced into coins or julienne']],
+    method: 'Melt lard, add ginger first and garlic after 5 min. Hold at 120–130°C for 20–30 min until the solids are pale gold, then pull off the heat; they carry on colouring. Strain, or leave the solids in for a rougher, punchier oil. Spoon 10–15 ml into the bowl before the broth.' }
+];
+
+const UNITS = { g: 1, kg: 1000, ml: 1, cloves: 5, head: 45, inch: 12, inches: 12, count: 55, stalks: 25, '': 1 };
+const UNIT_ROWS = [['g', 1, 'exact'], ['kg', 1000, 'exact'], ['ml', 1, 'water density; soy is ~1.15, oil ~0.92'], ['cloves', 5, 'one peeled garlic clove'], ['head', 45, 'whole garlic bulb, peeled'], ['inch', 12, '1 in of ginger, peeled'], ['inches', 12, 'same as inch'], ['count', 55, 'one large egg, shell on'], ['stalks', 25, 'one scallion / negi green top'], ['(blank)', 1, 'anything with no unit set is treated as grams']];
+const ALIAS = { 'Koikuchi shoyu (dark soy)': 'Koikuchi shoyu' };
+const AISLES = ['Butcher', 'Produce & eggs', 'Pantry', 'Make at home'];
+function aisleOf(name, from) {
+  if (from === 'Broth' || /^Pork belly|^Lard/.test(name)) return 'Butcher';
+  if (/dashi$/.test(name) && name !== 'Shiro dashi') return 'Make at home';
+  if (name === 'Water') return 'Make at home';
+  if (/^Eggs|^Garlic|^Ginger|^Scallion|^Negi|^Yellow onion|^Carrot|^Cabbage|^Celery|^Apple|^Bean sprouts|^Corn/.test(name)) return 'Produce & eggs';
+  return 'Pantry';
+}
+
+const DEFAULTS = {
+  v: 1,
+  broth: { totalKg: 3, mix: Object.fromEntries(PARTS.map(p => [p.id, p.pct])) },
+  veg: { totalG: 800, mix: Object.fromEntries(VEG.map(v => [v.id, v.pct])) },
+  tare: { bowlMl: 400, tarePct: 10, saltPct: 10, batchMl: 400, gmpWeight: 2.3, synergyK: 1218, ml: Object.fromEntries(TARE.map(t => [t.id, t.ml])) },
+  toppings: Object.fromEntries(TOPS.map(t => [t.id, { on: true, base: t.base, want: t.base }])),
+  notes: ''
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function normalize(c) {
+  const d = clone(DEFAULTS);
+  if (!c || typeof c !== 'object') return d;
+  const n = (v, def) => (v === null || v === undefined || v === '' || !Number.isFinite(+v)) ? def : +v;
+  d.broth.totalKg = n(c.broth?.totalKg, d.broth.totalKg);
+  for (const k in d.broth.mix) d.broth.mix[k] = n(c.broth?.mix?.[k], d.broth.mix[k]);
+  d.veg.totalG = n(c.veg?.totalG, d.veg.totalG);
+  for (const k in d.veg.mix) d.veg.mix[k] = n(c.veg?.mix?.[k], d.veg.mix[k]);
+  for (const k of ['bowlMl', 'tarePct', 'saltPct', 'batchMl', 'gmpWeight', 'synergyK']) d.tare[k] = n(c.tare?.[k], d.tare[k]);
+  for (const k in d.tare.ml) d.tare.ml[k] = n(c.tare?.ml?.[k], d.tare.ml[k]);
+  for (const t of TOPS) {
+    const s = c.toppings?.[t.id];
+    if (s) { d.toppings[t.id].on = s.on !== false; d.toppings[t.id].base = n(s.base, t.base); d.toppings[t.id].want = n(s.want, t.base); }
+  }
+  if (typeof c.notes === 'string') d.notes = c.notes;
+  return d;
+}
+
+/* ---------- state ---------- */
+const K_DRAFT = 'rbb.draft.v1', K_TAB = 'rbb.tab', K_TICKS = 'rbb.ticks';
+let S = (() => { try { const r = store.get(K_DRAFT); return r ? normalize(JSON.parse(r)) : clone(DEFAULTS); } catch (e) { return clone(DEFAULTS); } })();
+const UI = { bF: 'All', bS: 'sheet', vF: 'All', vS: 'sheet', tF: 'all' };
+let ticks = (() => { try { return new Set(JSON.parse(store.get(K_TICKS) || '[]')); } catch (e) { return new Set(); } })();
+
+const getPath = (o, p) => p.split('.').reduce((x, k) => x?.[k], o);
+function setPath(o, p, v) { const ks = p.split('.'); const last = ks.pop(); const t = ks.reduce((x, k) => x[k], o); t[last] = v; }
+
+/* ---------- maths (mirrors the spreadsheet formulas) ---------- */
+function diffLevel(diff, target) {
+  if (Math.round(diff * 100) === 0) return 'ok';
+  return Math.abs(diff) <= Math.abs(target) * 0.02 ? 'close' : 'off';
+}
+function diffText(diff, unit, d) {
+  if (Math.round(diff * 100) === 0) return 'On target';
+  return (diff > 0 ? 'Over by ' : 'Under by ') + fx(Math.abs(diff), d) + ' ' + unit;
+}
+const fmtMass = g => g >= 1000 ? fx(g / 1000, 2) + ' kg' : tr(g, g >= 10 ? 0 : 1) + ' g';
+const fmtVol = ml => ml >= 1000 ? fx(ml / 1000, 2) + ' L' : tr(ml, ml >= 10 ? 0 : 1) + ' ml';
+function fmtAmt(a, u) {
+  if (u === 'kg') return fx(a, 2) + ' kg';
+  if (u === 'g') return fmtMass(a);
+  if (u === 'ml') return fmtVol(a);
+  return tr(a, 1) + (u ? ' ' + u : '');
+}
+
+function compute(c) {
+  const D = {};
+  // broth
+  const bi = PARTS.map(p => ({ ...p, pct: Math.max(0, num(c.broth.mix[p.id])) }));
+  const bt = sum(bi.map(x => x.pct));
+  const bw = k => bt ? sum(bi.map(x => x[k] * x.pct)) / bt : 0;
+  const gel = bw('gel'), flav = bw('flav');
+  const gs = (gel + flav) ? gel / (gel + flav) : 0;
+  const byType = { Gelatin: 0, Flavor: 0, Both: 0 }, byAnimal = { Chicken: 0, Pork: 0 };
+  bi.forEach(x => { byType[x.type] += x.pct; byAnimal[x.animal] += x.pct; });
+  const priority = !bt ? null : gs >= 0.6 ? 'Gelatin prioritized' : gs <= 0.4 ? 'Flavor prioritized' : 'Balanced';
+  D.b = { items: bi, total: bt, gel, flav, ratio: flav ? gel / flav : 0, gelShare: gs, priority, byType, byAnimal, totalKg: Math.max(0, num(c.broth.totalKg)) };
+
+  // vegetables
+  const vi = VEG.map(v => ({ ...v, pct: Math.max(0, num(c.veg.mix[v.id])) }));
+  const vt = sum(vi.map(x => x.pct));
+  const vw = k => vt ? sum(vi.map(x => x[k] * x.pct)) / vt : 0;
+  const aroma = vw('aroma'), sweet = vw('sweet'), umami = vw('umami');
+  const byRole = { Aromatic: 0, Sweetness: 0, Umami: 0, Multi: 0 };
+  vi.forEach(x => { byRole[x.role] += x.pct; });
+  const dom = !vt ? null : (aroma >= sweet && aroma >= umami) ? 'Aromatic' : (sweet >= umami ? 'Sweet' : 'Umami');
+  D.v = { items: vi, total: vt, aroma, sweet, umami, dom, byRole, totalG: Math.max(0, num(c.veg.totalG)) };
+
+  // tare
+  const T = c.tare, bowl = Math.max(0, num(T.bowlMl));
+  const tv = bowl * num(T.tarePct) / 100, ts = tv * num(T.saltPct) / 100;
+  const ti = TARE.map(t => { const ml = Math.max(0, num(T.ml[t.id])); return { ...t, ml, saltG: t.salt * ml, share: tv ? ml / tv : 0 }; });
+  const tm = sum(ti.map(x => x.ml)), tsal = sum(ti.map(x => x.saltG));
+  const tw = k => tm ? sum(ti.map(x => x.ml * x[k])) / tm : 0;
+  const sugarP = tw('sugar'), acidP = tw('acid');
+  const sugarG = sugarP * tm, acidG = acidP * tm;
+  const gluMg = sum(ti.map(x => x.ml * x.glu)) / 100, impMg = sum(ti.map(x => x.ml * x.imp)) / 100, gmpMg = sum(ti.map(x => x.ml * x.gmp)) / 100;
+  const nucMg = impMg + gmpMg, umMg = gluMg + nucMg;
+  const K = num(T.synergyK), W = num(T.gmpWeight);
+  const gluB = bowl ? gluMg / bowl * 100 : 0, nucB = bowl ? (impMg + W * gmpMg) / bowl * 100 : 0;
+  const u = gluB / 1000, v = nucB / 1000, euc = u + K * u * v, mult = u ? euc / u : 0;
+  const verdict = umMg === 0 ? { lvl: 'close', t: 'No umami yet', hint: 'Add a glutamate source' }
+    : mult < 1.3 ? { lvl: 'off', t: 'Glutamate only', hint: 'Add katsuobushi or shiitake' }
+    : mult < 2 ? { lvl: 'close', t: 'Mild synergy', hint: 'More nucleotide would help' }
+    : { lvl: 'ok', t: 'Strong synergy', hint: 'Well balanced' };
+  const batch = Math.max(0, num(T.batchMl)), bowls = tv ? batch / tv : 0;
+  const bRows = ti.map(x => { const s = tm ? x.ml / tm : 0; const b = batch * s; return { ...x, bShare: s, batch: b, batchSalt: x.salt * b }; });
+  const bSalt = sum(bRows.map(x => x.batchSalt)), bTot = sum(bRows.map(x => x.batch));
+  const vin = ti.find(x => x.id === 'vinegar');
+  D.t = { items: ti, bowl, tv, ts, tsBowl: bowl ? ts / bowl : 0, tm, tsal, sugarP, acidP, sugarG, acidG,
+    volDiff: tm - tv, saltDiff: tsal - ts, saltPct: tm ? tsal / tm : 0, bowlSal: bowl ? tsal / bowl : 0,
+    saltSugar: sugarG ? tsal / sugarG : 0, saltAcid: acidG ? tsal / acidG : 0,
+    gluMg, impMg, gmpMg, nucMg, umMg, gluNuc: nucMg ? gluMg / nucMg : 0,
+    gluB, nucB, euc, mult, verdict, u, inRange: u >= 0.01 && u <= 0.5,
+    batch, bowls, bRows, bSalt, bTot, bSaltPct: bTot ? bSalt / bTot : 0,
+    vinegarShare: tv ? vin.ml / tv : 0 };
+
+  // toppings
+  D.tops = TOPS.map(t => {
+    const st = c.toppings[t.id]; const base = Math.max(0, num(st.base)), want = Math.max(0, num(st.want)); const k = base ? want / base : 0;
+    return { ...t, on: !!st.on, base, want, k, rows: t.ings.map(([name, amt, unit, note]) => ({ name, amt, unit, note, scaled: amt * k })) };
+  });
+  const lard = D.tops.find(t => t.id === 'lard');
+  D.lardPortion = lard.base ? lard.ings[0][1] / lard.base : 0;
+
+  D.checks = checksFor(D);
+  D.shop = shoppingFor(D);
+  D.look = lookFor(D);
+  return D;
+}
+
+function checksFor(D) {
+  const out = [];
+  if (Math.round(D.b.total * 100) !== 10000) out.push({ tab: 'broth', lvl: 'off', t: `Broth mix adds up to ${tr(D.b.total, 1)}%. It needs to total 100%.` });
+  if (Math.round(D.v.total * 100) !== 10000) out.push({ tab: 'aromatics', lvl: 'off', t: `Vegetable mix adds up to ${tr(D.v.total, 1)}%. It needs to total 100%.` });
+  if (D.t.tm === 0) out.push({ tab: 'tare', lvl: 'off', t: 'The tare is empty. Add at least one ingredient.' });
+  else {
+    const vl = diffLevel(D.t.volDiff, D.t.tv);
+    if (vl !== 'ok') out.push({ tab: 'tare', lvl: vl, t: `Tare is ${fx(Math.abs(D.t.volDiff), 1)} ml ${D.t.volDiff > 0 ? 'over' : 'under'} its ${tr(D.t.tv, 1)} ml target.` });
+    const sl = diffLevel(D.t.saltDiff, D.t.ts);
+    if (sl !== 'ok') out.push({ tab: 'tare', lvl: sl, t: `Salt is ${fx(Math.abs(D.t.saltDiff), 2)} g ${D.t.saltDiff > 0 ? 'over' : 'under'} its ${fx(D.t.ts, 2)} g target.` });
+  }
+  if (D.t.vinegarShare > 0.05) out.push({ tab: 'tare', lvl: 'off', t: `Rice vinegar is ${pc(D.t.vinegarShare, 1)} of the tare. Keep it under 5%.` });
+  return out;
+}
+
+function shoppingFor(D) {
+  const lines = [];
+  D.b.items.forEach(x => { if (x.pct > 0) lines.push({ name: `${x.animal} - ${x.part}`, amt: x.pct / 100 * D.b.totalKg, unit: 'kg', from: 'Broth' }); });
+  D.v.items.forEach(x => { if (x.pct > 0) lines.push({ name: x.name, amt: x.pct / 100 * D.v.totalG, unit: 'g', from: 'Aromatics' }); });
+  D.t.bRows.forEach(x => { if (x.batch > 0) lines.push({ name: x.name, amt: x.batch, unit: x.unit, from: 'Tare' }); });
+  D.tops.forEach(t => { if (t.on) t.rows.forEach(r => { if (r.scaled > 0) lines.push({ name: r.name, amt: r.scaled, unit: r.unit, from: t.short }); }); });
+  const map = new Map();
+  lines.forEach(l => {
+    const key = ALIAS[l.name] || l.name;
+    if (!map.has(key)) map.set(key, { name: key, lines: [], aisle: aisleOf(key, l.from) });
+    map.get(key).lines.push(l);
+  });
+  const items = [...map.values()].map(it => {
+    const g = sum(it.lines.map(l => l.amt * (UNITS[l.unit] ?? 1)));
+    const units = [...new Set(it.lines.map(l => l.unit))];
+    let qty;
+    if (units.length === 1 && units[0] === 'ml') qty = fmtVol(g);
+    else if (units.length === 1 && !['g', 'kg', 'ml', ''].includes(units[0])) qty = `${tr(sum(it.lines.map(l => l.amt)), 1)} ${units[0]} · ≈${fmtMass(g)}`;
+    else qty = fmtMass(g);
+    return { ...it, g, qty };
+  });
+  items.sort((a, b) => AISLES.indexOf(a.aisle) - AISLES.indexOf(b.aisle) || a.name.localeCompare(b.name));
+  return items;
+}
+
+const CLEAR = [224, 172, 86], CREAM = [238, 225, 200], SOY = [104, 52, 20], MISO = [196, 140, 72];
+const mixc = (a, b, t) => a.map((x, i) => Math.round(x + (b[i] - x) * t));
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+function lookFor(D) {
+  const bt = D.b.total || 1;
+  const share = id => D.b.items.find(x => x.id === id).pct / bt;
+  const ml = id => D.t.items.find(x => x.id === id).ml;
+  const bowl = D.t.bowl || 400;
+  const fatShare = share('pork-femur') + share('pork-backfat') + 0.6 * share('chicken-skin') + 0.6 * share('pork-skin');
+  const soy = (ml('koikuchi') + 1.15 * ml('tamari') + 0.45 * ml('usukuchi') + 0.7 * ml('oyster') + 0.25 * ml('fish')) / bowl;
+  const miso = (ml('shiro-miso') + 1.4 * ml('aka-miso')) / bowl;
+  const gel = D.b.total ? D.b.gel : 0;
+  const cloud = clamp(0.1 + 0.07 * gel + 0.9 * fatShare + 10 * miso, 0.08, 0.95);
+  let col = mixc(CLEAR, CREAM, clamp((cloud - 0.1) / 0.8, 0, 1));
+  col = mixc(col, SOY, clamp(soy / 0.07, 0, 1) * 0.78);
+  if (miso > 0) col = mixc(col, MISO, clamp(miso / 0.04, 0, 0.65));
+  const drops = Math.round(4 + 70 * share('pork-backfat') + 30 * share('chicken-skin') + 20 * share('pork-femur'));
+  return { col, cloud, drops };
+}
+
+/* ---------- static rendering ---------- */
+const TYPEVAR = { Gelatin: '--gel', Flavor: '--flav', Both: '--both' };
+const ROLEVAR = { Aromatic: '--aro', Sweetness: '--swe', Umami: '--uma', Multi: '--mul' };
+function tickBar(n, c) { let h = `<span class="ticks" style="--c:var(${c})" aria-hidden="true">`; for (let i = 1; i <= 10; i++) h += `<i class="${i <= n ? 'on' : ''}"></i>`; return h + '</span>'; }
+function ctrlHTML(prefix, id, path, label, unitLabel) {
+  return `<div class="ctrl">
+    <input type="range" id="r-${prefix}-${id}" min="0" max="100" step="1" data-bind="${path}" aria-label="${esc(label)}, percent of mix">
+    <span class="inp sm"><input type="number" id="n-${prefix}-${id}" min="0" max="100" step="1" inputmode="decimal" data-bind="${path}" aria-label="${esc(label)}, percent of mix"><span class="u">%</span></span>
+    <span class="amt" data-o="${prefix}-amt-${id}"></span></div>`;
+}
+function brothRow(p) {
+  return `<div class="item" data-row="broth.mix.${p.id}">
+    <div class="item-main"><div class="item-name"><span class="sub">${p.animal}</span><span>${esc(p.part)}</span><span class="tag" style="--c:var(${TYPEVAR[p.type]})">${p.type}</span></div><div class="item-note">${esc(p.note)}</div></div>
+    <div class="scores"><div class="score"><span>Gelatin</span>${tickBar(p.gel, '--gel')}<b>${p.gel}</b></div><div class="score"><span>Flavor</span>${tickBar(p.flav, '--flav')}<b>${p.flav}</b></div></div>
+    ${ctrlHTML('b', p.id, 'broth.mix.' + p.id, p.animal + ' ' + p.part)}</div>`;
+}
+function vegRow(v) {
+  return `<div class="item" data-row="veg.mix.${v.id}">
+    <div class="item-main"><div class="item-name"><span>${esc(v.name)}</span><span class="tag" style="--c:var(${ROLEVAR[v.role]})">${v.role}</span></div><div class="item-note">${esc(v.note)}</div></div>
+    <div class="scores"><div class="score"><span>Aroma</span>${tickBar(v.aroma, '--aro')}<b>${v.aroma}</b></div><div class="score"><span>Sweetness</span>${tickBar(v.sweet, '--swe')}<b>${v.sweet}</b></div><div class="score"><span>Umami</span>${tickBar(v.umami, '--uma')}<b>${v.umami}</b></div></div>
+    ${ctrlHTML('v', v.id, 'veg.mix.' + v.id, v.name)}</div>`;
+}
+function segHTML(name, opts, cur) {
+  return opts.map(([val, label, cnt]) => `<button type="button" data-seg="${name}" data-v="${val}" aria-pressed="${val === cur}">${label}${cnt != null ? ` <span class="cnt">${cnt}</span>` : ''}</button>`).join('');
+}
+function renderBroth() {
+  $('#bSeg').innerHTML = segHTML('bF', [['All', 'All', PARTS.length], ...['Gelatin', 'Flavor', 'Both'].map(t => [t, t, PARTS.filter(p => p.type === t).length])], UI.bF);
+  let items = PARTS.filter(p => UI.bF === 'All' || p.type === UI.bF);
+  const mix = id => num(S.broth.mix[id]);
+  if (UI.bS === 'gel') items.sort((a, b) => b.gel - a.gel || b.flav - a.flav);
+  if (UI.bS === 'flav') items.sort((a, b) => b.flav - a.flav || b.gel - a.gel);
+  if (UI.bS === 'mix') items.sort((a, b) => mix(b.id) - mix(a.id) || a.i - b.i);
+  let h = '', last = null;
+  items.forEach(p => { if (UI.bS === 'sheet' && p.animal !== last) { h += `<div class="grp lbl">${p.animal}</div>`; last = p.animal; } h += brothRow(p); });
+  $('#bList').innerHTML = h || '<p class="note-s">No parts match this filter.</p>';
+}
+function renderVeg() {
+  $('#vSeg').innerHTML = segHTML('vF', [['All', 'All', VEG.length], ...['Aromatic', 'Sweetness', 'Umami', 'Multi'].map(t => [t, t, VEG.filter(v => v.role === t).length])], UI.vF);
+  let items = VEG.filter(v => UI.vF === 'All' || v.role === UI.vF);
+  const mix = id => num(S.veg.mix[id]);
+  if (['aroma', 'sweet', 'umami'].includes(UI.vS)) items.sort((a, b) => b[UI.vS] - a[UI.vS] || a.i - b.i);
+  if (UI.vS === 'mix') items.sort((a, b) => mix(b.id) - mix(a.id) || a.i - b.i);
+  $('#vList').innerHTML = items.map(vegRow).join('') || '<p class="note-s">No vegetables have this role yet. A vegetable is Multi when two of its scores are 7 or higher.</p>';
+}
+function tareRow(t) {
+  const facts = [`salt ${tr(t.salt * 100, 1)}%`];
+  if (t.sugar >= 0.02) facts.push(`sugar ${tr(t.sugar * 100, 1)}%`);
+  if (t.acid >= 0.01) facts.push(`acid ${tr(t.acid * 100, 1)}%`);
+  if (t.glu) facts.push(`glu ${tr(t.glu, 0)}`);
+  if (t.imp) facts.push(`IMP ${t.imp}`);
+  if (t.gmp) facts.push(`GMP ${t.gmp}`);
+  const step = t.id === 'salt' || t.id === 'msg' ? 0.1 : 0.5;
+  return `<div class="trow" data-row="tare.ml.${t.id}">
+    <div class="item-main"><div class="item-name">${esc(t.name)}</div><div class="item-note">${esc(t.note)}</div><div class="facts">${facts.map(f => `<span>${f}</span>`).join('')}</div>${t.id === 'vinegar' ? '<div class="warnline" data-o="t-vin-warn"></div>' : ''}</div>
+    <div class="tctrl"><span class="inp"><button type="button" data-step="tare.ml.${t.id}" data-delta="-${step}" aria-label="Less ${esc(t.name)}">−</button><input type="number" id="t-${t.id}" min="0" step="0.1" inputmode="decimal" data-bind="tare.ml.${t.id}" aria-label="${esc(t.name)}, amount in ${t.unit}"><span class="u">${t.unit}</span><button type="button" data-step="tare.ml.${t.id}" data-delta="${step}" aria-label="More ${esc(t.name)}">+</button></span></div>
+    <div class="tout"><span data-o="t-sg-${t.id}"></span><span data-o="t-sh-${t.id}"></span></div></div>`;
+}
+function renderTare() {
+  const used = TARE.filter(t => num(S.tare.ml[t.id]) > 0).length;
+  $('#tSeg').innerHTML = segHTML('tF', [['all', 'All ingredients', TARE.length], ['used', 'In my tare', used]], UI.tF);
+  let h = '';
+  TARE_GROUPS.forEach(([g, label]) => {
+    const items = TARE.filter(t => t.group === g && (UI.tF === 'all' || num(S.tare.ml[t.id]) > 0));
+    if (!items.length) return;
+    h += `<div class="grp lbl">${label}</div>` + items.map(tareRow).join('');
+  });
+  $('#tList').innerHTML = h || '<p class="note-s">Nothing in the tare yet. Show all ingredients to add some.</p>';
+}
+function renderTops() {
+  $('#tops').innerHTML = TOPS.map(t => `<article class="tcard" data-card="${t.id}">
+    <div class="tcard-head"><div><h3>${t.name} <span class="jp">${t.jp}</span></h3><p class="item-note">${t.sub}</p></div>
+      <label class="switch"><input type="checkbox" id="on-${t.id}" data-bind-check="toppings.${t.id}.on"><span>In my bowl</span></label></div>
+    <div class="tbody">
+      <div class="fields">
+        <div class="field"><label class="lbl" for="base-${t.id}">Recipe written for</label><span class="inp"><input type="number" id="base-${t.id}" min="0" step="1" inputmode="numeric" data-bind="toppings.${t.id}.base"><span class="u">portions</span></span></div>
+        <div class="field"><label class="lbl" for="want-${t.id}">I want to make</label><span class="inp"><button type="button" data-step="toppings.${t.id}.want" data-delta="-1" aria-label="Fewer portions">−</button><input type="number" id="want-${t.id}" min="0" step="1" inputmode="numeric" data-bind="toppings.${t.id}.want"><span class="u">portions</span><button type="button" data-step="toppings.${t.id}.want" data-delta="1" aria-label="More portions">+</button></span></div>
+        <div class="derived" data-o="tp-${t.id}-per"></div>
+      </div>
+      <div class="tablewrap"><table class="t"><thead><tr><th>Ingredient</th><th class="num">Recipe</th><th class="num">Scaled</th><th>Notes</th></tr></thead><tbody>
+        ${t.ings.map((r, i) => `<tr><td>${esc(r[0])}</td><td class="num">${tr(r[1], 1)}${r[2] ? ' ' + r[2] : ''}</td><td class="num"><b data-o="tp-${t.id}-${i}"></b>${r[2] ? ' ' + r[2] : ''}</td><td class="note">${esc(r[3] || '')}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="method"><span class="lbl">Method</span>${esc(t.method)}</p>
+    </div></article>`).join('');
+}
+$('#convBody').innerHTML = UNIT_ROWS.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="note">${esc(r[2])}</td></tr>`).join('');
+
+/* ---------- bowl drawing ---------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+(function drawStatic() {
+  let h = '';
+  const N = 30;
+  for (let i = 0; i < N; i++) h += `<path d="M-6 6V-6H6V6H-2V-2H2V2" transform="rotate(${(i * 360 / N).toFixed(2)} 200 200) translate(200 25)"></path>`;
+  $('#raimon').innerHTML = h;
+  let n = '';
+  for (let i = 0; i < 9; i++) {
+    const y = 214 + i * 11; let d = `M 58 ${y}`;
+    for (let x = 58; x < 342; x += 24) d += ` q 12 ${i % 2 ? -7 : 7} 24 0`;
+    n += `<path class="noodle-sh" d="${d}"></path><path class="noodle" d="${d}"></path>`;
+  }
+  $('#noodles').innerHTML = n;
+})();
+function spiral(r) {
+  let d = ''; const turns = 2.4, steps = 64;
+  for (let i = 0; i <= steps; i++) { const t = i / steps, a = t * turns * 2 * Math.PI, rr = r * (0.1 + 0.72 * t); d += (i ? 'L' : 'M') + (rr * Math.cos(a)).toFixed(1) + ' ' + (rr * Math.sin(a)).toFixed(1); }
+  return d;
+}
+function chashuSVG(x, y, r, rot) {
+  return `<g transform="translate(${x} ${y}) rotate(${rot})"><circle r="${r + 3}" fill="#000" fill-opacity=".18" cx="3" cy="4"></circle><circle r="${r}" fill="#B87155"></circle><path d="${spiral(r)}" fill="none" stroke="#F2DDC9" stroke-width="3.2" stroke-linecap="round" opacity=".92"></path><circle r="${r - 2.5}" fill="none" stroke="#6A3620" stroke-width="5"></circle><path d="M${-r * 0.5} ${-r * 0.35} l${r * 0.35} ${-r * 0.2}" stroke="#4A2412" stroke-width="3" stroke-linecap="round" opacity=".55"></path></g>`;
+}
+function eggSVG(x, y, rot) {
+  return `<g transform="translate(${x} ${y}) rotate(${rot})"><ellipse rx="33" ry="25" fill="#000" fill-opacity=".16" cx="3" cy="4"></ellipse><ellipse rx="31" ry="23" fill="#C4955A"></ellipse><ellipse rx="27.5" ry="20" fill="#F3E6CB"></ellipse><ellipse cx="-2" rx="15.5" ry="12.5" fill="#E58A1C"></ellipse><ellipse cx="-3.5" cy="-1" rx="9.5" ry="7.5" fill="#F5AE3E" opacity=".9"></ellipse></g>`;
+}
+function paintBowl(D) {
+  const L = D.look;
+  $('#brothBase').style.fill = rgb(mixc(L.col, [64, 36, 16], 0.2));
+  $('#brothTop').style.fill = rgb(L.col);
+  $('#brothTop').style.opacity = L.cloud.toFixed(3);
+  const lard = D.tops.find(t => t.id === 'lard').on;
+  const R = rng(7);
+  let f = '';
+  const nd = L.drops + (lard ? 24 : 0);
+  for (let i = 0; i < nd; i++) { const a = R() * Math.PI * 2, rr = 140 * Math.sqrt(R()), s = 2.5 + R() * 7; f += `<circle class="drop" cx="${(200 + rr * Math.cos(a)).toFixed(1)}" cy="${(200 + rr * Math.sin(a)).toFixed(1)}" r="${s.toFixed(1)}"></circle>`; }
+  if (lard) { const R2 = rng(19); for (let i = 0; i < 16; i++) { const a = R2() * Math.PI * 2, rr = 30 + 90 * R2(); f += `<circle cx="${(200 + rr * Math.cos(a)).toFixed(1)}" cy="${(200 + rr * Math.sin(a)).toFixed(1)}" r="${(1.3 + R2() * 1.8).toFixed(1)}" fill="#C8903A"></circle>`; } }
+  $('#fat').innerHTML = f;
+  let t = '';
+  if (D.tops.find(x => x.id === 'chashu').on) t += chashuSVG(136, 150, 40, -20) + chashuSVG(168, 112, 38, 30);
+  if (D.tops.find(x => x.id === 'tamago').on) t += eggSVG(268, 148, 28) + eggSVG(284, 205, -12);
+  $('#toppingsArt').innerHTML = t;
+  const tops = D.tops.filter(x => x.on).map(x => x.name.toLowerCase());
+  $('#bowlDesc').textContent = `${D.b.priority || 'Empty'} broth, ${tr(D.b.byAnimal.Chicken, 0)}% chicken and ${tr(D.b.byAnimal.Pork, 0)}% pork. ${tops.length ? 'Topped with ' + tops.join(', ') + '.' : 'No toppings.'}`;
+}
+
+/* ---------- painting ---------- */
+function out(k, v) { $$(`[data-o="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; }); }
+function chip(k, lvl, text) { $$(`[data-chip="${k}"]`).forEach(el => { el.className = 'chip ' + (lvl || ''); el.textContent = text; }); }
+function stack(k, parts) {
+  $$(`[data-stack="${k}"]`).forEach(el => {
+    el.innerHTML = parts.filter(p => p.v > 0).map(p => `<span style="--c:var(${p.c});width:${p.v}%" title="${esc(p.l)} ${tr(p.v, 1)}%"></span>`).join('');
+  });
+  $$(`[data-legend="${k}"]`).forEach(el => { el.innerHTML = parts.map(p => `<span class="tag" style="--c:var(${p.c})">${p.l}<b>${tr(p.v, 1)}%</b></span>`).join(''); });
+}
+function marker(k, f) { $$(`[data-marker="${k}"]`).forEach(el => { el.style.left = (clamp(f, 0, 1) * 100).toFixed(1) + '%'; }); }
+const totalChip = t => Math.round(t * 100) === 10000 ? ['ok', `Total 100% · OK`] : ['off', `Total ${tr(t, 1)}% · Adjust`];
+
+let D = null;
+function paint() {
+  D = compute(S);
+  syncInputs();
+  // broth
+  const b = D.b;
+  out('b-gel', b.total ? fx(b.gel, 1) : '—');
+  out('b-flav', b.total ? fx(b.flav, 1) : '—');
+  out('b-ratio', b.total ? fx(b.ratio, 2) : '—');
+  out('b-animal', b.total ? `Chicken ${tr(b.byAnimal.Chicken, 0)}% · Pork ${tr(b.byAnimal.Pork, 0)}%` : 'No parts yet');
+  out('b-share', b.total ? `Gelatin ${pc(b.gelShare)} of the profile · flavor ${pc(1 - b.gelShare)}` : 'Add parts to see the balance');
+  marker('b', b.gelShare); marker('ro-b', b.gelShare);
+  chip('b-priority', b.priority ? 'ink' : '', b.priority || 'Nothing yet');
+  stack('b-type', ['Gelatin', 'Flavor', 'Both'].map(t => ({ l: t, v: b.byType[t], c: TYPEVAR[t] })));
+  chip('b-total', ...totalChip(b.total));
+  $('#bBalance').disabled = !b.total || Math.round(b.total * 100) === 10000;
+  PARTS.forEach(p => out('b-amt-' + p.id, fmtAmt(num(S.broth.mix[p.id]) / 100 * b.totalKg, 'kg')));
+  // veg
+  const v = D.v;
+  out('v-aroma', v.total ? fx(v.aroma, 1) : '—');
+  out('v-sweet', v.total ? fx(v.sweet, 1) : '—');
+  out('v-umami', v.total ? fx(v.umami, 1) : '—');
+  out('v-dom', v.dom || '—');
+  stack('v-role', ['Aromatic', 'Sweetness', 'Umami', 'Multi'].map(t => ({ l: t, v: v.byRole[t], c: ROLEVAR[t] })));
+  stack('ro-v', ['Aromatic', 'Sweetness', 'Umami', 'Multi'].map(t => ({ l: t, v: v.byRole[t], c: ROLEVAR[t] })));
+  chip('v-total', ...totalChip(v.total));
+  $('#vBalance').disabled = !v.total || Math.round(v.total * 100) === 10000;
+  VEG.forEach(x => out('v-amt-' + x.id, fmtAmt(num(S.veg.mix[x.id]) / 100 * v.totalG, 'g')));
+  // row highlight
+  $$('[data-row]').forEach(el => { const on = num(getPath(S, el.dataset.row)) > 0; el.classList.toggle('on', on); el.classList.toggle('zero', !on); });
+  // tare
+  const t = D.t;
+  out('t-tv', fmtVol(t.tv)); out('t-ts', fx(t.ts, 2) + ' g'); out('t-tsb', pc(t.tsBowl, 2));
+  out('t-vol', fx(t.tm, 1) + ' ml'); out('t-vol-s', `target ${tr(t.tv, 1)} ml · ${pc(t.tv ? t.tm / t.tv : 0)} of target`);
+  const vl = t.tm ? diffLevel(t.volDiff, t.tv) : 'off'; chip('t-vol', vl, t.tm ? diffText(t.volDiff, 'ml', 1) : 'Empty');
+  out('t-salt', fx(t.tsal, 2) + ' g'); out('t-salt-s', `target ${fx(t.ts, 2)} g`);
+  const sl = t.tm ? diffLevel(t.saltDiff, t.ts) : 'off'; chip('t-salt', sl, t.tm ? diffText(t.saltDiff, 'g', 2) : 'Empty');
+  out('t-saltpct', pc(t.saltPct, 2)); out('t-saltpct-s', `target ${fx(num(S.tare.saltPct), 1)}%`);
+  out('t-bowlsal', pc(t.bowlSal, 2)); out('t-bowlsal-s', `target ${pc(t.tsBowl, 2)}`);
+  t.items.forEach(x => { out('t-sg-' + x.id, x.ml ? fx(x.saltG, 2) + ' g salt' : '—'); out('t-sh-' + x.id, x.ml ? pc(x.share, 1) + ' of tare' : ''); });
+  out('t-vin-warn', t.vinegarShare > 0.05 ? `${pc(t.vinegarShare, 1)} of tare. Keep it under 5%.` : '');
+  out('c-salt', pc(t.saltPct, 1)); out('c-salt-g', fx(t.tsal, 2) + ' g');
+  out('c-sugar', pc(t.sugarP, 1)); out('c-sugar-g', fx(t.sugarG, 2) + ' g');
+  out('c-acid', pc(t.acidP, 2)); out('c-acid-g', fx(t.acidG, 2) + ' g');
+  out('c-ss', t.saltSugar ? fx(t.saltSugar, 2) : '—'); out('c-sa', t.saltAcid ? fx(t.saltAcid, 1) : '—');
+  const us = x => t.umMg ? pc(x / t.umMg, 1) : '';
+  out('u-glu', tr(t.gluMg, 2)); out('u-glu-p', us(t.gluMg));
+  out('u-imp', tr(t.impMg, 2)); out('u-imp-p', us(t.impMg));
+  out('u-gmp', tr(t.gmpMg, 2)); out('u-gmp-p', us(t.gmpMg));
+  out('u-nuc', tr(t.nucMg, 2)); out('u-nuc-p', us(t.nucMg));
+  out('u-tot', tr(t.umMg, 2)); out('u-gn', t.nucMg ? fx(t.gluNuc, 1) : '—');
+  out('s-glu', fx(t.gluB, 2)); out('s-nuc', fx(t.nucB, 2)); out('s-euc', fx(t.euc, 3)); out('s-mult', t.mult ? '×' + fx(t.mult, 2) : '—');
+  out('s-hint', t.verdict.hint); chip('s-verdict', t.verdict.lvl, t.verdict.t);
+  out('s-range', t.u ? (t.inRange ? `Bowl glutamate is ${fx(t.u, 3)} g/100 ml, inside the 0.01–0.5 g/100 ml range the formula was fitted over.` : `Bowl glutamate is ${fx(t.u, 3)} g/100 ml, outside the 0.01–0.5 g/100 ml range the formula was fitted over. Treat the EUC as a rough guide.`) : '');
+  out('t-bowls', tr(t.bowls, 1)); out('t-bsaltpct', pc(t.bSaltPct, 2));
+  $('#batchBody').innerHTML = t.bRows.filter(x => x.ml > 0).map(x => `<tr><td>${esc(x.name)}</td><td class="num">${pc(x.bShare, 1)}</td><td class="num">${tr(x.ml, 2)} ${x.unit}</td><td class="num">${tr(x.batch, 1)} ${x.unit}</td><td class="num">${fx(x.batchSalt, 2)} g</td></tr>`).join('') || '<tr><td colspan="5" class="note">Add ingredients to the tare to scale a batch.</td></tr>';
+  out('bt-share', t.tm ? '100%' : '—'); out('bt-bowl', tr(t.tm, 2) + ' ml'); out('bt-batch', tr(t.bTot, 1) + ' ml'); out('bt-salt', fx(t.bSalt, 2) + ' g');
+  // toppings
+  D.tops.forEach(tp => {
+    const card = $(`[data-card="${tp.id}"]`); if (card) card.classList.toggle('off', !tp.on);
+    tp.rows.forEach((r, i) => out(`tp-${tp.id}-${i}`, tp.base ? tr(r.scaled, 1) : '—'));
+    const first = tp.ings[0][1];
+    const per = tp.id === 'lard' ? `Yield per portion: ${tr(D.lardPortion, 1)} ml` : tp.id === 'chashu' ? `Per portion: ${tr(tp.base ? first / tp.base : 0, 0)} g raw belly` : `Per portion: ${tr(tp.base ? first / tp.base : 0, 2)} egg`;
+    out(`tp-${tp.id}-per`, per);
+  });
+  // shopping
+  paintShop();
+  // aside
+  out('slip-size', fmtVol(t.bowl) + ' bowl');
+  const steps = [['Tare', fmtVol(t.tm)]];
+  const lardOn = D.tops.find(x => x.id === 'lard').on;
+  if (lardOn) steps.push(['Aromatic lard', tr(D.lardPortion, 1) + ' ml']);
+  steps.push(['Broth', fmtVol(Math.max(0, t.bowl - t.tm))]);
+  steps.push(['Homemade noodles', '']);
+  const tops = D.tops.filter(x => x.on && x.id !== 'lard');
+  steps.push(['Toppings', tops.length ? tops.map(x => x.short).join(' + ') : 'none']);
+  $('#assembly').innerHTML = steps.map(([k, val]) => `<li><span>${k}</span><span class="v">${esc(val)}</span></li>`).join('');
+  const cks = D.checks;
+  const tabName = { broth: 'Broth', aromatics: 'Aromatics', tare: 'Tare' };
+  $('#checks').innerHTML = cks.length ? cks.map(c => `<div class="check ${c.lvl}"><span>${esc(c.t)} <button type="button" class="linkbtn" data-goto="${c.tab}">${tabName[c.tab]}</button></span></div>`).join('') : '<div class="check ok"><span>All checks pass.</span></div>';
+  ['broth', 'aromatics', 'tare'].forEach(k => { const d = $(`[data-dot="${k}"]`); if (d) d.hidden = !cks.some(c => c.tab === k && c.lvl === 'off'); });
+  chip('ro-b', b.priority ? 'ink' : '', b.priority || 'Nothing yet');
+  out('ro-b-sub', b.total ? `Gelatin ${fx(b.gel, 1)} · Flavor ${fx(b.flav, 1)} · ${tr(b.byAnimal.Chicken, 0)}% chicken, ${tr(b.byAnimal.Pork, 0)}% pork` : 'Add parts on the Broth tab.');
+  chip('ro-v', v.dom ? 'ink' : '', v.dom || 'Nothing yet');
+  out('ro-v-sub', v.total ? `Aroma ${fx(v.aroma, 1)} · Sweetness ${fx(v.sweet, 1)} · Umami ${fx(v.umami, 1)}` : 'Add vegetables on the Aromatics tab.');
+  chip('ro-s', t.tm ? sl : 'off', t.tm ? (sl === 'ok' ? 'On target' : sl === 'close' ? 'Close' : 'Adjust') : 'Empty');
+  out('ro-s-val', pc(t.bowlSal, 2) + ' of bowl');
+  out('ro-s-sub', `Target ${pc(t.tsBowl, 2)} · ${fx(t.tsal, 2)} g salt in ${fx(t.tm, 1)} ml of tare`);
+  chip('ro-u', t.verdict.lvl, t.verdict.t);
+  out('ro-u-val', `${fx(t.euc, 3)} g MSG-eq / 100 ml`);
+  out('ro-u-sub', t.mult ? `×${fx(t.mult, 2)} synergy · ${t.verdict.hint}` : t.verdict.hint);
+  paintBowl(D);
+  saveDraft();
+}
+
+function paintShop() {
+  const items = D.shop;
+  out('shop-count', `${items.length} items · ${items.filter(i => ticks.has(i.name)).length} ticked`);
+  let h = '';
+  AISLES.forEach(a => {
+    const list = items.filter(i => i.aisle === a);
+    if (!list.length) return;
+    h += `<div class="aisle"><h3>${a}</h3>` + list.map((it, n) => {
+      const id = 'sh-' + a.replace(/\W+/g, '') + '-' + n;
+      const done = ticks.has(it.name);
+      return `<div class="shop-item${done ? ' done' : ''}"><input type="checkbox" id="${id}" data-tick="${esc(it.name)}"${done ? ' checked' : ''}><label for="${id}">${esc(it.name)}</label><span class="qty">${esc(it.qty)}</span><span class="from">${it.lines.map(l => `${l.from} ${fmtAmt(l.amt, l.unit)}`).join(' · ')}</span></div>`;
+    }).join('') + '</div>';
+  });
+  const el = $('#shopList');
+  if (el.dataset.sig !== h) { el.innerHTML = h || '<p class="note-s">Nothing to buy yet. Add parts, vegetables, tare or toppings.</p>'; el.dataset.sig = h; }
+}
+function shopText() {
+  const lines = [`Ramen shopping list (${tr(D.t.bowls, 1)} bowls of tare)`];
+  AISLES.forEach(a => {
+    const list = D.shop.filter(i => i.aisle === a);
+    if (!list.length) return;
+    lines.push('', a.toUpperCase());
+    list.forEach(i => lines.push(`- ${i.name}: ${i.qty}`));
+  });
+  return lines.join('\n');
+}
+
+function syncInputs() {
+  $$('[data-bind]').forEach(el => {
+    if (el === document.activeElement) return;
+    const v = getPath(S, el.dataset.bind);
+    const s = String(Math.round(num(v) * 1000) / 1000);
+    if (el.value !== s) el.value = s;
+  });
+  $$('[data-bind-check]').forEach(el => { el.checked = !!getPath(S, el.dataset.bindCheck); });
+  $$('[data-bind-text]').forEach(el => { if (el !== document.activeElement) { const v = getPath(S, el.dataset.bindText) || ''; if (el.value !== v) el.value = v; } });
+}
+
+let raf = 0;
+const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); };
+let draftT = 0;
+function saveDraft() { clearTimeout(draftT); draftT = setTimeout(() => store.set(K_DRAFT, JSON.stringify(S)), 350); }
+
+/* ---------- events ---------- */
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.bind) {
+    let v = num(el.value);
+    if (el.min !== '') v = Math.max(num(el.min), v);
+    if (el.max !== '') v = Math.min(num(el.max), v);
+    setPath(S, el.dataset.bind, v);
+    schedule();
+  } else if (el.dataset.bindText) {
+    setPath(S, el.dataset.bindText, el.value);
+    saveDraft();
+  }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.bindCheck) { setPath(S, el.dataset.bindCheck, el.checked); schedule(); }
+  if (el.dataset.tick !== undefined) {
+    const name = el.dataset.tick;
+    el.checked ? ticks.add(name) : ticks.delete(name);
+    el.closest('.shop-item').classList.toggle('done', el.checked);
+    store.set(K_TICKS, JSON.stringify([...ticks]));
+    out('shop-count', `${D.shop.length} items · ${D.shop.filter(i => ticks.has(i.name)).length} ticked`);
+  }
+  if (el.dataset.bind) syncInputs();
+});
+document.addEventListener('focusout', e => { if (e.target.dataset && e.target.dataset.bind) syncInputs(); });
+document.addEventListener('click', e => {
+  const st = e.target.closest('[data-step]');
+  if (st) {
+    const p = st.dataset.step, d = num(st.dataset.delta);
+    setPath(S, p, Math.max(0, Math.round((num(getPath(S, p)) + d) * 100) / 100));
+    schedule(); return;
+  }
+  const sg = e.target.closest('[data-seg]');
+  if (sg) {
+    UI[sg.dataset.seg] = sg.dataset.v;
+    if (sg.dataset.seg === 'bF') renderBroth(); else if (sg.dataset.seg === 'vF') renderVeg(); else renderTare();
+    paint(); return;
+  }
+  const go = e.target.closest('[data-goto]');
+  if (go) { showTab(go.dataset.goto, true); return; }
+});
+$('#bSort').addEventListener('change', e => { UI.bS = e.target.value; renderBroth(); paint(); });
+$('#vSort').addEventListener('change', e => { UI.vS = e.target.value; renderVeg(); paint(); });
+function balance(mix) {
+  const ids = Object.keys(mix), tot = sum(ids.map(k => num(mix[k])));
+  if (!tot) return;
+  const raw = ids.map(k => ({ k, v: num(mix[k]) / tot * 1000 }));
+  const fl = raw.map(r => ({ k: r.k, f: Math.floor(r.v), rem: r.v - Math.floor(r.v) }));
+  let left = 1000 - sum(fl.map(r => r.f));
+  fl.sort((a, b) => b.rem - a.rem).forEach(r => { if (left > 0 && r.rem > 0) { r.f++; left--; } });
+  fl.forEach(r => { mix[r.k] = r.f / 10; });
+}
+$('#bBalance').addEventListener('click', () => { balance(S.broth.mix); paint(); });
+$('#vBalance').addEventListener('click', () => { balance(S.veg.mix); paint(); });
+
+/* tabs */
+const TABS = ['broth', 'aromatics', 'tare', 'toppings', 'shopping'];
+function showTab(k, focus) {
+  if (!TABS.includes(k)) k = 'broth';
+  TABS.forEach(t => {
+    const on = t === k;
+    const b = $('#tab-' + t); b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
+    $('#p-' + t).hidden = !on;
+  });
+  if (k === 'tare') { renderTare(); paint(); }
+  store.set(K_TAB, k);
+  if (focus) { $('#tab-' + k).focus(); if (window.matchMedia('(max-width:980px)').matches) $('.tabs').scrollIntoView({ block: 'start' }); }
+}
+$('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
+$('.tabs').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const cur = TABS.findIndex(t => $('#tab-' + t).getAttribute('aria-selected') === 'true');
+  const next = TABS[(cur + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length];
+  showTab(next, true); e.preventDefault();
+});
+
+/* undo-able replace */
+let undoS = null;
+function replaceState(next, msg) {
+  undoS = clone(S);
+  S = normalize(next);
+  renderTare(); renderBroth(); renderVeg(); paint();
+  const m = $('#slipMsg');
+  m.innerHTML = `${esc(msg)} <button type="button" class="linkbtn" id="undoBtn">Undo</button>`;
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'undoBtn' && undoS) { S = undoS; undoS = null; renderTare(); renderBroth(); renderVeg(); paint(); $('#slipMsg').textContent = 'Restored your previous bowl.'; }
+});
+$('#resetBtn').addEventListener('click', () => replaceState(DEFAULTS, 'Back to the starting bowl.'));
+
+/* copy list */
+$('#copyShop').addEventListener('click', () => {
+  const text = shopText();
+  const fb = $('#copyFallback');
+  const fallback = () => { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); $('#copyMsg').textContent = 'Copying is blocked here. The list is selected below; copy it with your keyboard.'; };
+  try {
+    navigator.clipboard.writeText(text).then(() => { fb.hidden = true; $('#copyMsg').textContent = `Copied ${D.shop.length} items.`; }, fallback);
+  } catch (err) { fallback(); }
+});
+$('#clearTicks').addEventListener('click', () => { ticks = new Set(); store.set(K_TICKS, '[]'); $('#shopList').dataset.sig = ''; paintShop(); });
+
+/* ---------- saved bowls (kept in this browser) ---------- */
+const K_SAVED = 'rbb.saved.v1';
+let savedDocs = new Map();
+const canStore = (() => { try { const k = '__rbb'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return true; } catch (e) { return false; } })();
+const slug = s => s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-').slice(0, 60);
+const fmtDate = iso => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+function summary(cfg) {
+  try { const d = compute(normalize(cfg)); return `${d.b.priority || 'No broth'} · ${pc(d.t.bowlSal, 2)} salt · ${d.t.verdict.t.toLowerCase()}`; } catch (e) { return ''; }
+}
+function loadSaved() {
+  try { const o = JSON.parse(store.get(K_SAVED) || '{}'); savedDocs = new Map(Object.entries(o).map(([id, d]) => [id, { id, ...d }])); } catch (e) { savedDocs = new Map(); }
+}
+function writeSaved() {
+  const o = {};
+  savedDocs.forEach((d, id) => { o[id] = { name: d.name, savedAt: d.savedAt, config: d.config }; });
+  try { localStorage.setItem(K_SAVED, JSON.stringify(o)); return true; } catch (e) { return false; }
+}
+function renderSaved() {
+  const ul = $('#savedList');
+  const docs = [...savedDocs.values()].sort((a, b) => String(b.savedAt || '').localeCompare(String(a.savedAt || '')));
+  if (!docs.length) { ul.innerHTML = '<li class="empty">No saved bowls yet. Name this bowl and save it to come back to it later. Saved bowls stay in this browser.</li>'; return; }
+  ul.innerHTML = docs.map(d => `<li><div><div class="sv-name">${esc(d.name || 'Untitled bowl')}</div><div class="sv-meta">${esc(fmtDate(d.savedAt))}${d.config ? ' · ' + esc(summary(d.config)) : ''}</div></div>
+    <div class="sv-act"><button type="button" class="btn ghost sm" data-load="${esc(d.id)}">Load</button><button type="button" class="btn ghost sm" data-del="${esc(d.id)}" aria-label="Delete ${esc(d.name || 'bowl')}">Delete</button></div></li>`).join('');
+}
+if (!canStore) {
+  $('#savedList').innerHTML = '<li class="empty">This browser is blocking site storage, so bowls can\'t be saved here.</li>';
+} else {
+  $('#saveForm').hidden = false;
+  loadSaved(); renderSaved();
+  window.addEventListener('storage', e => { if (e.key === K_SAVED) { loadSaved(); renderSaved(); } });
+}
+$('#saveForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('#saveName').value.trim();
+  const msg = $('#saveMsg');
+  if (!name) { msg.textContent = 'Give the bowl a name first.'; $('#saveName').focus(); return; }
+  const id = slug(name) || 'bowl-' + Date.now();
+  const prev = savedDocs.get(id);
+  savedDocs.set(id, { id, name, savedAt: new Date().toISOString(), config: clone(S) });
+  if (!writeSaved()) {
+    if (prev) savedDocs.set(id, prev); else savedDocs.delete(id);
+    msg.textContent = 'This browser is out of storage space for this site. Delete a saved bowl, then try again.';
+    return;
+  }
+  msg.textContent = prev ? `Updated "${name}".` : `Saved "${name}".`;
+  $('#saveName').value = '';
+  renderSaved();
+});
+let armT = 0;
+$('#savedList').addEventListener('click', e => {
+  const ld = e.target.closest('[data-load]');
+  if (ld) {
+    const d = savedDocs.get(ld.dataset.load);
+    if (d && d.config) replaceState(d.config, `Loaded "${d.name}".`);
+    return;
+  }
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    if (!del.classList.contains('armed')) {
+      $$('#savedList .armed').forEach(b => { b.classList.remove('armed'); b.textContent = 'Delete'; });
+      del.classList.add('armed'); del.textContent = 'Confirm';
+      clearTimeout(armT); armT = setTimeout(() => { del.classList.remove('armed'); del.textContent = 'Delete'; }, 4000);
+      return;
+    }
+    const d = savedDocs.get(del.dataset.del);
+    savedDocs.delete(del.dataset.del);
+    writeSaved(); renderSaved();
+    $('#saveMsg').textContent = `Deleted "${d ? d.name : 'bowl'}".`;
+  }
+});
+
+/* ---------- boot ---------- */
+renderBroth(); renderVeg(); renderTare(); renderTops();
+const hash = (location.hash || '').slice(1);
+showTab(TABS.includes(hash) ? hash : (store.get(K_TAB) || 'broth'));
+paint();
+})();
+</script>
+</body>
+</html>
