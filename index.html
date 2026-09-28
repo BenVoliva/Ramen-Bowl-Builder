@@ -225,6 +225,34 @@ details.more[open] summary{margin-bottom:10px}
 .tbody{display:grid;gap:14px;transition:opacity .2s}
 .method{font-size:14px;max-width:72ch}
 .method .lbl{margin-right:6px}
+.mine{font-family:var(--f-body);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-left:8px;vertical-align:.25em}
+.tcard.editing{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.field.grow{flex:1 1 220px;min-width:0}
+.field.grow .inp{width:100%}
+.card-actions{display:flex;flex-wrap:wrap;gap:8px}
+.ing-edit{display:grid;gap:8px}
+.ing-head,.ing-row{display:grid;grid-template-columns:minmax(0,2fr) 92px 104px minmax(0,2fr) 36px;grid-template-areas:"name amt unit note rm";gap:8px;align-items:center}
+.ing-head span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.ing-row .ing-name{grid-area:name}.ing-row .ing-amt{grid-area:amt}.ing-row .ing-unit{grid-area:unit;width:100%}.ing-row .ing-note{grid-area:note}.ing-row .icon-btn{grid-area:rm}
+.ing-row .ing-amt input{width:100%}
+@media (max-width:640px){
+  .ing-head{display:none}
+  .ing-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 36px;grid-template-areas:"name name rm" "amt unit ." "note note note";padding-bottom:10px;border-bottom:1px solid var(--line)}
+}
+.icon-btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);width:36px;height:36px;border-radius:var(--r-s);cursor:pointer;font:500 18px/1 var(--f-data)}
+.icon-btn:hover{color:var(--accent);border-color:var(--accent)}
+.ta{width:100%;min-height:92px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface);padding:9px 11px;font-size:14px;line-height:1.5;resize:vertical}
+.ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.swatches{border:0;padding:0;margin:0;min-width:0}
+.swatches legend{padding:0;margin-bottom:7px}
+.sw-row{display:flex;flex-wrap:wrap;gap:8px 16px}
+.sw{position:relative;display:inline-flex;align-items:center;gap:7px;font-size:13.5px;cursor:pointer}
+.sw input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.sw span{width:20px;height:20px;border-radius:50%;background:var(--sw);box-shadow:0 0 0 1px var(--ink-2),inset 0 0 0 2px var(--surface)}
+.sw input:checked+span{box-shadow:0 0 0 2.5px var(--ink),inset 0 0 0 2px var(--surface)}
+.sw input:focus-visible+span{outline:2px solid var(--accent);outline-offset:3px}
+.add-card{border:1.5px dashed var(--line);border-radius:var(--r-m);padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+.add-card p{color:var(--ink-2);max-width:56ch;font-size:14px}
 .switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-weight:700;font-size:13.5px;user-select:none}
 .switch input{appearance:none;-webkit-appearance:none;width:40px;height:23px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);position:relative;cursor:pointer;transition:background .2s;margin:0;flex:none}
 .switch input::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:var(--bowl);box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .2s}
@@ -257,7 +285,7 @@ details.more[open] summary{margin-bottom:10px}
 .assembly{list-style:none;margin:0;padding:0;counter-reset:a;border-top:1px dashed var(--line)}
 .assembly li{counter-increment:a;display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px;align-items:baseline}
 .assembly li::before{content:counter(a);font:500 12px var(--f-data);color:var(--accent)}
-.assembly .v{font:13px var(--f-data);color:var(--ink-2);text-align:right;white-space:nowrap}
+.assembly .v{font:13px var(--f-data);color:var(--ink-2);text-align:right;overflow-wrap:anywhere}
 .checks{display:grid;gap:6px}
 .check{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.4}
 .check::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--ink-2)}
@@ -490,10 +518,11 @@ details.more[open] summary{margin-bottom:10px}
         <div class="panel-head">
           <div>
             <h2>Toppings <span class="jp">トッピング</span></h2>
-            <p>Each recipe scales from the yield it was written for. Switch a topping off to take it out of the bowl and the shopping list.</p>
+            <p>Each recipe scales from the yield it was written for. Switch a topping off to take it out of the bowl and the shopping list, or add your own at the bottom.</p>
           </div>
         </div>
         <div class="tops" id="tops"></div>
+        <p class="msg" id="topsMsg" role="status" style="margin-top:10px"></p>
       </section>
 
       <!-- SHOPPING -->
@@ -710,8 +739,19 @@ function aisleOf(name, from) {
   if (/dashi$/.test(name) && name !== 'Shiro dashi') return 'Make at home';
   if (name === 'Water') return 'Make at home';
   if (/^Eggs|^Garlic|^Ginger|^Scallion|^Negi|^Yellow onion|^Carrot|^Cabbage|^Celery|^Apple|^Bean sprouts|^Corn/.test(name)) return 'Produce & eggs';
+  // names typed into custom toppings
+  if (/\b(dried|oil|sauce|paste|powder|flakes|vinegar|seeds?|salt|sugar|miso|nori)\b/i.test(name)) return 'Pantry';
+  if (/\b(pork|chicken|beef|duck|bacon|belly|mince|lamb)\b/i.test(name)) return 'Butcher';
+  if (/\b(eggs?|tofu|spinach|bok choy|pak choi|leeks?|onions?|scallions?|chives?|garlic|ginger|chil+i(es)?|limes?|lemons?|cilantro|coriander|mushrooms?|enoki|cabbage|carrots?|sprouts|corn|butter|herbs?)\b/i.test(name)) return 'Produce & eggs';
   return 'Pantry';
 }
+
+// custom toppings
+const COLORS = [['greens', 'Greens', '#5E9E3A'], ['bamboo', 'Bamboo', '#C9A15B'], ['nori', 'Nori', '#24322A'], ['corn', 'Corn', '#F0C02E'], ['pink', 'Naruto pink', '#E9A3B8'], ['chili', 'Chili red', '#C23B22']];
+const COLOR_HEX = Object.fromEntries(COLORS.map(([k, , h]) => [k, h]));
+const UNIT_CHOICES = [['g', 'g'], ['kg', 'kg'], ['ml', 'ml'], ['count', 'count'], ['cloves', 'cloves'], ['head', 'head'], ['inch', 'inch'], ['stalks', 'stalks'], ['', 'no unit']];
+const newId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const blankIng = () => ({ name: '', amt: 0, unit: 'g', note: '' });
 
 const DEFAULTS = {
   v: 1,
@@ -719,6 +759,7 @@ const DEFAULTS = {
   veg: { totalG: 800, mix: Object.fromEntries(VEG.map(v => [v.id, v.pct])) },
   tare: { bowlMl: 400, tarePct: 10, saltPct: 10, batchMl: 400, gmpWeight: 2.3, synergyK: 1218, ml: Object.fromEntries(TARE.map(t => [t.id, t.ml])) },
   toppings: Object.fromEntries(TOPS.map(t => [t.id, { on: true, base: t.base, want: t.base }])),
+  customTops: [],
   notes: ''
 };
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -737,6 +778,24 @@ function normalize(c) {
     const s = c.toppings?.[t.id];
     if (s) { d.toppings[t.id].on = s.on !== false; d.toppings[t.id].base = n(s.base, t.base); d.toppings[t.id].want = n(s.want, t.base); }
   }
+  const str = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
+  if (Array.isArray(c.customTops)) {
+    const seen = new Set();
+    d.customTops = c.customTops.filter(t => t && typeof t === 'object').slice(0, 20).map(t => {
+      let id = typeof t.id === 'string' && /^[\w-]{1,40}$/.test(t.id) ? t.id : newId();
+      if (seen.has(id)) id = newId();
+      seen.add(id);
+      const base = Math.max(0, n(t.base, 1));
+      return {
+        id, name: str(t.name, 60), sub: str(t.sub, 80), method: str(t.method, 2000),
+        on: t.on !== false, base, want: Math.max(0, n(t.want, base)),
+        color: COLOR_HEX[t.color] ? t.color : 'greens',
+        ings: Array.isArray(t.ings) ? t.ings.filter(r => r && typeof r === 'object').slice(0, 30).map(r => ({
+          name: str(r.name, 80), amt: Math.max(0, n(r.amt, 0)), unit: Object.prototype.hasOwnProperty.call(UNITS, r.unit) ? r.unit : '', note: str(r.note, 120)
+        })) : []
+      };
+    });
+  }
   if (typeof c.notes === 'string') d.notes = c.notes;
   return d;
 }
@@ -744,7 +803,7 @@ function normalize(c) {
 /* ---------- state ---------- */
 const K_DRAFT = 'rbb.draft.v1', K_TAB = 'rbb.tab', K_TICKS = 'rbb.ticks';
 let S = (() => { try { const r = store.get(K_DRAFT); return r ? normalize(JSON.parse(r)) : clone(DEFAULTS); } catch (e) { return clone(DEFAULTS); } })();
-const UI = { bF: 'All', bS: 'sheet', vF: 'All', vS: 'sheet', tF: 'all' };
+const UI = { bF: 'All', bS: 'sheet', vF: 'All', vS: 'sheet', tF: 'all', editing: new Set() };
 let ticks = (() => { try { return new Set(JSON.parse(store.get(K_TICKS) || '[]')); } catch (e) { return new Set(); } })();
 
 const getPath = (o, p) => p.split('.').reduce((x, k) => x?.[k], o);
@@ -825,6 +884,12 @@ function compute(c) {
     const st = c.toppings[t.id]; const base = Math.max(0, num(st.base)), want = Math.max(0, num(st.want)); const k = base ? want / base : 0;
     return { ...t, on: !!st.on, base, want, k, rows: t.ings.map(([name, amt, unit, note]) => ({ name, amt, unit, note, scaled: amt * k })) };
   });
+  (c.customTops || []).forEach((t, idx) => {
+    const base = Math.max(0, num(t.base)), want = Math.max(0, num(t.want)); const k = base ? want / base : 0;
+    const name = t.name.trim() || 'Untitled topping';
+    D.tops.push({ id: t.id, idx, custom: true, name, short: name, sub: t.sub, color: t.color, on: !!t.on, base, want, k,
+      rows: t.ings.map(r => ({ name: r.name.trim(), amt: num(r.amt), unit: r.unit, note: r.note, scaled: num(r.amt) * k })) });
+  });
   const lard = D.tops.find(t => t.id === 'lard');
   D.lardPortion = lard.base ? lard.ings[0][1] / lard.base : 0;
 
@@ -854,11 +919,11 @@ function shoppingFor(D) {
   D.b.items.forEach(x => { if (x.pct > 0) lines.push({ name: `${x.animal} - ${x.part}`, amt: x.pct / 100 * D.b.totalKg, unit: 'kg', from: 'Broth' }); });
   D.v.items.forEach(x => { if (x.pct > 0) lines.push({ name: x.name, amt: x.pct / 100 * D.v.totalG, unit: 'g', from: 'Aromatics' }); });
   D.t.bRows.forEach(x => { if (x.batch > 0) lines.push({ name: x.name, amt: x.batch, unit: x.unit, from: 'Tare' }); });
-  D.tops.forEach(t => { if (t.on) t.rows.forEach(r => { if (r.scaled > 0) lines.push({ name: r.name, amt: r.scaled, unit: r.unit, from: t.short }); }); });
+  D.tops.forEach(t => { if (t.on) t.rows.forEach(r => { if (r.name && r.scaled > 0) lines.push({ name: r.name, amt: r.scaled, unit: r.unit, from: t.short }); }); });
   const map = new Map();
   lines.forEach(l => {
-    const key = ALIAS[l.name] || l.name;
-    if (!map.has(key)) map.set(key, { name: key, lines: [], aisle: aisleOf(key, l.from) });
+    const name = ALIAS[l.name] || l.name, key = name.toLowerCase();
+    if (!map.has(key)) map.set(key, { name, lines: [], aisle: aisleOf(name, l.from) });
     map.get(key).lines.push(l);
   });
   const items = [...map.values()].map(it => {
@@ -962,8 +1027,67 @@ function renderTare() {
   });
   $('#tList').innerHTML = h || '<p class="note-s">Nothing in the tare yet. Show all ingredients to add some.</p>';
 }
+function portionFields(key, path) {
+  return `<div class="fields">
+        <div class="field"><label class="lbl" for="base-${key}">Recipe written for</label><span class="inp"><input type="number" id="base-${key}" min="0" step="1" inputmode="numeric" data-bind="${path}.base"><span class="u">portions</span></span></div>
+        <div class="field"><label class="lbl" for="want-${key}">I want to make</label><span class="inp"><button type="button" data-step="${path}.want" data-delta="-1" aria-label="Fewer portions">−</button><input type="number" id="want-${key}" min="0" step="1" inputmode="numeric" data-bind="${path}.want"><span class="u">portions</span><button type="button" data-step="${path}.want" data-delta="1" aria-label="More portions">+</button></span></div>
+        <div class="derived" data-o="tp-${key}-per"></div>
+      </div>`;
+}
+function customView(t, i) {
+  const path = `customTops.${i}`, key = t.id;
+  const rows = t.ings.filter(r => r.name.trim() || r.amt);
+  const table = rows.length ? `<div class="tablewrap"><table class="t"><thead><tr><th>Ingredient</th><th class="num">Recipe</th><th class="num">Scaled</th><th>Notes</th></tr></thead><tbody>
+        ${t.ings.map((r, j) => (r.name.trim() || r.amt) ? `<tr><td>${esc(r.name.trim() || 'Unnamed ingredient')}</td><td class="num">${tr(r.amt, 2)}${r.unit ? ' ' + r.unit : ''}</td><td class="num"><b data-o="tp-${key}-${j}"></b>${r.unit ? ' ' + r.unit : ''}</td><td class="note">${esc(r.note)}</td></tr>` : '').join('')}
+      </tbody></table></div>` : '<p class="note-s">No ingredients yet. Edit the topping to add some.</p>';
+  return `<article class="tcard" data-card="${key}">
+    <div class="tcard-head"><div><h3>${esc(t.name.trim() || 'Untitled topping')} <span class="mine">Your topping</span></h3>${t.sub ? `<p class="item-note">${esc(t.sub)}</p>` : ''}</div>
+      <label class="switch"><input type="checkbox" id="on-${key}" data-bind-check="${path}.on"><span>In my bowl</span></label></div>
+    <div class="tbody">
+      ${portionFields(key, path)}
+      ${table}
+      ${t.method.trim() ? `<p class="method"><span class="lbl">Method</span>${esc(t.method)}</p>` : ''}
+      <div class="card-actions"><button type="button" class="btn ghost sm" data-edit-top="${key}">Edit</button><button type="button" class="btn ghost sm" data-del-top="${key}">Delete</button></div>
+    </div></article>`;
+}
+function customEdit(t, i) {
+  const path = `customTops.${i}`, key = t.id;
+  const unitOpts = UNIT_CHOICES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  return `<article class="tcard editing" data-card="${key}">
+    <div class="tcard-head"><h3>${t.name.trim() ? 'Edit topping' : 'New topping'}</h3>
+      <label class="switch"><input type="checkbox" id="on-${key}" data-bind-check="${path}.on"><span>In my bowl</span></label></div>
+    <div class="tbody">
+      <div class="fields">
+        <div class="field grow"><label class="lbl" for="nm-${key}">Name</label><span class="inp wide"><input type="text" id="nm-${key}" maxlength="60" placeholder="e.g. Menma" autocomplete="off" data-bind-text="${path}.name"></span></div>
+        <div class="field grow"><label class="lbl" for="sub-${key}">Short description</label><span class="inp wide"><input type="text" id="sub-${key}" maxlength="80" placeholder="e.g. Seasoned bamboo shoots" autocomplete="off" data-bind-text="${path}.sub"></span></div>
+      </div>
+      ${portionFields(key, path)}
+      <fieldset class="swatches"><legend class="lbl">Colour in the bowl</legend><div class="sw-row">
+        ${COLORS.map(([k, l, h]) => `<label class="sw"><input type="radio" name="col-${key}" value="${k}" data-bind-text="${path}.color"><span style="--sw:${h}"></span>${l}</label>`).join('')}
+      </div></fieldset>
+      <div class="ing-edit">
+        <div class="ing-head" aria-hidden="true"><span>Ingredient</span><span>Amount</span><span>Unit</span><span>Notes</span><span></span></div>
+        ${t.ings.map((r, j) => `<div class="ing-row">
+          <span class="inp wide ing-name"><input type="text" id="in-${key}-${j}" maxlength="80" placeholder="Ingredient" autocomplete="off" data-bind-text="${path}.ings.${j}.name" aria-label="Ingredient ${j + 1} name"></span>
+          <span class="inp ing-amt"><input type="number" min="0" step="any" inputmode="decimal" placeholder="0" data-blank-zero data-bind="${path}.ings.${j}.amt" aria-label="Ingredient ${j + 1} amount"></span>
+          <select class="ing-unit" data-bind-text="${path}.ings.${j}.unit" aria-label="Ingredient ${j + 1} unit">${unitOpts}</select>
+          <span class="inp wide ing-note"><input type="text" maxlength="120" placeholder="Notes (optional)" autocomplete="off" data-bind-text="${path}.ings.${j}.note" aria-label="Ingredient ${j + 1} notes"></span>
+          <button type="button" class="icon-btn" data-rm-ing="${key}:${j}" aria-label="Remove ingredient ${j + 1}">×</button>
+        </div>`).join('')}
+      </div>
+      <div><button type="button" class="btn ghost sm" data-add-ing="${key}">+ Add ingredient</button></div>
+      <div class="field"><label class="lbl" for="me-${key}">Method</label><textarea class="ta" id="me-${key}" maxlength="2000" placeholder="How to make it" data-bind-text="${path}.method"></textarea></div>
+      <div class="card-actions"><button type="button" class="btn accent" data-done-top="${key}">Done</button><button type="button" class="btn ghost" data-del-top="${key}">Delete topping</button></div>
+    </div></article>`;
+}
 function renderTops() {
-  $('#tops').innerHTML = TOPS.map(t => `<article class="tcard" data-card="${t.id}">
+  const custom = S.customTops.map((t, i) => UI.editing.has(t.id) ? customEdit(t, i) : customView(t, i)).join('');
+  const add = S.customTops.length >= 20 ? '<p class="note-s">You have 20 custom toppings, the most this page holds. Delete one to add another.</p>'
+    : `<div class="add-card"><p>Menma, nori, corn, chili oil: add your own recipe. It scales with portions, joins the shopping list and shows up in the bowl.</p><button type="button" class="btn accent" data-add-top>+ Add a topping</button></div>`;
+  $('#tops').innerHTML = builtinTops() + custom + add;
+}
+function builtinTops() {
+  return TOPS.map(t => `<article class="tcard" data-card="${t.id}">
     <div class="tcard-head"><div><h3>${t.name} <span class="jp">${t.jp}</span></h3><p class="item-note">${t.sub}</p></div>
       <label class="switch"><input type="checkbox" id="on-${t.id}" data-bind-check="toppings.${t.id}.on"><span>In my bowl</span></label></div>
     <div class="tbody">
@@ -977,6 +1101,14 @@ function renderTops() {
       </tbody></table></div>
       <p class="method"><span class="lbl">Method</span>${esc(t.method)}</p>
     </div></article>`).join('');
+}
+const ctIndex = id => S.customTops.findIndex(t => t.id === id);
+function focusLater(sel) {
+  requestAnimationFrame(() => {
+    const el = $(sel); if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
 }
 $('#convBody').innerHTML = UNIT_ROWS.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="note">${esc(r[2])}</td></tr>`).join('');
 
@@ -1006,6 +1138,28 @@ function chashuSVG(x, y, r, rot) {
 function eggSVG(x, y, rot) {
   return `<g transform="translate(${x} ${y}) rotate(${rot})"><ellipse rx="33" ry="25" fill="#000" fill-opacity=".16" cx="3" cy="4"></ellipse><ellipse rx="31" ry="23" fill="#C4955A"></ellipse><ellipse rx="27.5" ry="20" fill="#F3E6CB"></ellipse><ellipse cx="-2" rx="15.5" ry="12.5" fill="#E58A1C"></ellipse><ellipse cx="-3.5" cy="-1" rx="9.5" ry="7.5" fill="#F5AE3E" opacity=".9"></ellipse></g>`;
 }
+// spots in the bowl that the built-in toppings leave free
+const SPOTS = [[200, 292], [112, 238], [262, 268], [236, 88], [92, 180], [312, 112]];
+function customArt(tp, i) {
+  const [cx, cy] = SPOTS[i % SPOTS.length];
+  const hex = COLOR_HEX[tp.color] || COLOR_HEX.greens;
+  const R = rng(101 + i * 37);
+  const at = spread => { const a = R() * Math.PI * 2, r = spread * Math.sqrt(R()); return [(cx + r * Math.cos(a)).toFixed(1), (cy + r * Math.sin(a)).toFixed(1)]; };
+  let h = '';
+  if (tp.color === 'nori') {
+    const rot = (R() * 30 - 15).toFixed(1);
+    return `<g transform="translate(${cx} ${cy}) rotate(${rot})"><rect x="-21" y="-30" width="46" height="62" rx="2" fill="#000" fill-opacity=".18"></rect><rect x="-23" y="-32" width="46" height="62" rx="2" fill="${hex}" stroke="#3B4D40" stroke-width="1.2"></rect></g>`;
+  }
+  for (let k = 0; k < 13; k++) {
+    const [x, y] = at(26), rot = (R() * 180).toFixed(0);
+    if (tp.color === 'greens') h += `<circle cx="${x}" cy="${y}" r="${(3 + R() * 2.5).toFixed(1)}" fill="none" stroke="${hex}" stroke-width="2.4"></circle>`;
+    else if (tp.color === 'bamboo') h += `<rect x="${x}" y="${y}" width="17" height="5" rx="2" fill="${hex}" stroke="#8C6A2E" stroke-width=".8" transform="rotate(${rot} ${x} ${y})"></rect>`;
+    else if (tp.color === 'corn') h += `<circle cx="${x}" cy="${y}" r="3.4" fill="${hex}" stroke="#C99A1E" stroke-width=".8"></circle>`;
+    else if (tp.color === 'pink') { if (k < 3) { const [px, py] = at(16); h += `<circle cx="${px}" cy="${py}" r="11" fill="#FBF3F0" stroke="#E3D7D2" stroke-width="1"></circle><path d="M${px} ${py} m-5 0 a5 5 0 1 1 5 5 a3 3 0 1 1 -3 -3" fill="none" stroke="${hex}" stroke-width="2.4"></path>`; } }
+    else h += `<line x1="${x}" y1="${y}" x2="${(+x + 9).toFixed(1)}" y2="${(+y + 3).toFixed(1)}" stroke="${hex}" stroke-width="1.8" stroke-linecap="round" transform="rotate(${rot} ${x} ${y})"></line>`;
+  }
+  return h;
+}
 function paintBowl(D) {
   const L = D.look;
   $('#brothBase').style.fill = rgb(mixc(L.col, [64, 36, 16], 0.2));
@@ -1019,6 +1173,7 @@ function paintBowl(D) {
   if (lard) { const R2 = rng(19); for (let i = 0; i < 16; i++) { const a = R2() * Math.PI * 2, rr = 30 + 90 * R2(); f += `<circle cx="${(200 + rr * Math.cos(a)).toFixed(1)}" cy="${(200 + rr * Math.sin(a)).toFixed(1)}" r="${(1.3 + R2() * 1.8).toFixed(1)}" fill="#C8903A"></circle>`; } }
   $('#fat').innerHTML = f;
   let t = '';
+  D.tops.filter(x => x.custom && x.on).forEach((tp, i) => { t += customArt(tp, i); });
   if (D.tops.find(x => x.id === 'chashu').on) t += chashuSVG(136, 150, 40, -20) + chashuSVG(168, 112, 38, 30);
   if (D.tops.find(x => x.id === 'tamago').on) t += eggSVG(268, 148, 28) + eggSVG(284, 205, -12);
   $('#toppingsArt').innerHTML = t;
@@ -1099,6 +1254,7 @@ function paint() {
   D.tops.forEach(tp => {
     const card = $(`[data-card="${tp.id}"]`); if (card) card.classList.toggle('off', !tp.on);
     tp.rows.forEach((r, i) => out(`tp-${tp.id}-${i}`, tp.base ? tr(r.scaled, 1) : '—'));
+    if (tp.custom) { out(`tp-${tp.id}-per`, tp.base ? `Scaled ×${tr(tp.k, 2)}` : 'Set how many portions the recipe makes'); return; }
     const first = tp.ings[0][1];
     const per = tp.id === 'lard' ? `Yield per portion: ${tr(D.lardPortion, 1)} ml` : tp.id === 'chashu' ? `Per portion: ${tr(tp.base ? first / tp.base : 0, 0)} g raw belly` : `Per portion: ${tr(tp.base ? first / tp.base : 0, 2)} egg`;
     out(`tp-${tp.id}-per`, per);
@@ -1164,11 +1320,15 @@ function syncInputs() {
   $$('[data-bind]').forEach(el => {
     if (el === document.activeElement) return;
     const v = getPath(S, el.dataset.bind);
-    const s = String(Math.round(num(v) * 1000) / 1000);
+    const s = (el.dataset.blankZero !== undefined && !num(v)) ? '' : String(Math.round(num(v) * 1000) / 1000);
     if (el.value !== s) el.value = s;
   });
   $$('[data-bind-check]').forEach(el => { el.checked = !!getPath(S, el.dataset.bindCheck); });
-  $$('[data-bind-text]').forEach(el => { if (el !== document.activeElement) { const v = getPath(S, el.dataset.bindText) || ''; if (el.value !== v) el.value = v; } });
+  $$('[data-bind-text]').forEach(el => {
+    const v = getPath(S, el.dataset.bindText) ?? '';
+    if (el.type === 'radio') { el.checked = el.value === v; return; }
+    if (el !== document.activeElement && el.value !== v) el.value = v;
+  });
 }
 
 let raf = 0;
@@ -1187,12 +1347,13 @@ document.addEventListener('input', e => {
     schedule();
   } else if (el.dataset.bindText) {
     setPath(S, el.dataset.bindText, el.value);
-    saveDraft();
+    schedule();
   }
 });
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.bindCheck) { setPath(S, el.dataset.bindCheck, el.checked); schedule(); }
+  if (el.dataset.bindText && (el.tagName === 'SELECT' || el.type === 'radio')) { setPath(S, el.dataset.bindText, el.value); schedule(); }
   if (el.dataset.tick !== undefined) {
     const name = el.dataset.tick;
     el.checked ? ticks.add(name) : ticks.delete(name);
@@ -1218,7 +1379,61 @@ document.addEventListener('click', e => {
   }
   const go = e.target.closest('[data-goto]');
   if (go) { showTab(go.dataset.goto, true); return; }
+  customTopClick(e);
 });
+
+/* custom toppings: add, edit, delete */
+let topArmT = 0;
+function customTopClick(e) {
+  const msg = $('#topsMsg');
+  if (e.target.closest('[data-add-top]')) {
+    if (S.customTops.length >= 20) return;
+    const t = { id: newId(), name: '', sub: '', base: 4, want: 4, on: true, color: COLORS[S.customTops.length % COLORS.length][0], ings: [blankIng()], method: '' };
+    S.customTops.push(t); UI.editing.add(t.id); msg.textContent = '';
+    renderTops(); paint(); focusLater(`#nm-${t.id}`);
+    return;
+  }
+  const ed = e.target.closest('[data-edit-top]');
+  if (ed) { UI.editing.add(ed.dataset.editTop); renderTops(); paint(); focusLater(`#nm-${ed.dataset.editTop}`); return; }
+  const done = e.target.closest('[data-done-top]');
+  if (done) {
+    const id = done.dataset.doneTop, t = S.customTops[ctIndex(id)];
+    if (t) t.ings = t.ings.filter(r => r.name.trim() || r.amt);
+    UI.editing.delete(id); renderTops(); paint();
+    if (t) msg.textContent = `Saved "${t.name.trim() || 'Untitled topping'}".`;
+    focusLater(`[data-edit-top="${id}"]`);
+    return;
+  }
+  const add = e.target.closest('[data-add-ing]');
+  if (add) {
+    const id = add.dataset.addIng, t = S.customTops[ctIndex(id)];
+    if (!t || t.ings.length >= 30) return;
+    t.ings.push(blankIng()); renderTops(); paint(); focusLater(`#in-${id}-${t.ings.length - 1}`);
+    return;
+  }
+  const rm = e.target.closest('[data-rm-ing]');
+  if (rm) {
+    const [id, j] = rm.dataset.rmIng.split(':'), t = S.customTops[ctIndex(id)];
+    if (!t) return;
+    t.ings.splice(+j, 1); renderTops(); paint();
+    focusLater(t.ings.length ? `#in-${id}-${Math.min(+j, t.ings.length - 1)}` : `[data-add-ing="${id}"]`);
+    return;
+  }
+  const del = e.target.closest('[data-del-top]');
+  if (del) {
+    const id = del.dataset.delTop;
+    if (!del.classList.contains('armed')) {
+      $$('#tops .armed').forEach(b => { b.classList.remove('armed'); b.textContent = b.dataset.label; });
+      del.dataset.label = del.textContent; del.classList.add('armed'); del.textContent = 'Confirm delete';
+      clearTimeout(topArmT); topArmT = setTimeout(() => { del.classList.remove('armed'); del.textContent = del.dataset.label; }, 4000);
+      return;
+    }
+    const i = ctIndex(id); if (i < 0) return;
+    const [gone] = S.customTops.splice(i, 1); UI.editing.delete(id);
+    renderTops(); paint();
+    msg.textContent = `Deleted "${gone.name.trim() || 'Untitled topping'}".`;
+  }
+}
 $('#bSort').addEventListener('change', e => { UI.bS = e.target.value; renderBroth(); paint(); });
 $('#vSort').addEventListener('change', e => { UI.vS = e.target.value; renderVeg(); paint(); });
 function balance(mix) {
@@ -1259,12 +1474,13 @@ let undoS = null;
 function replaceState(next, msg) {
   undoS = clone(S);
   S = normalize(next);
-  renderTare(); renderBroth(); renderVeg(); paint();
+  UI.editing.clear();
+  renderTare(); renderBroth(); renderVeg(); renderTops(); paint();
   const m = $('#slipMsg');
   m.innerHTML = `${esc(msg)} <button type="button" class="linkbtn" id="undoBtn">Undo</button>`;
 }
 document.addEventListener('click', e => {
-  if (e.target.id === 'undoBtn' && undoS) { S = undoS; undoS = null; renderTare(); renderBroth(); renderVeg(); paint(); $('#slipMsg').textContent = 'Restored your previous bowl.'; }
+  if (e.target.id === 'undoBtn' && undoS) { S = undoS; undoS = null; UI.editing.clear(); renderTare(); renderBroth(); renderVeg(); renderTops(); paint(); $('#slipMsg').textContent = 'Restored your previous bowl.'; }
 });
 $('#resetBtn').addEventListener('click', () => replaceState(DEFAULTS, 'Back to the starting bowl.'));
 
