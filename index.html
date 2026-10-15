@@ -318,6 +318,69 @@ details.more[open] summary{margin-bottom:10px}
 #bowl .noodle{fill:none;stroke:#E4BF58;stroke-width:6.5;stroke-linecap:round}
 #bowl .noodle-sh{fill:none;stroke:#7A561A;stroke-opacity:.35;stroke-width:9;stroke-linecap:round}
 #bowl .drop{fill:rgba(255,246,222,.3);stroke:rgba(255,252,240,.7);stroke-width:1}
+
+/* ---------- Light refresh: depth, motion, press feedback, touch sizes ---------- */
+:root{
+  --ease-out:cubic-bezier(.2,.8,.2,1); --t-fast:120ms; --t-med:200ms;
+  --elev-1:0 1px 2px var(--shadow);
+  --elev-2:0 1px 2px var(--shadow),0 8px 22px -10px var(--shadow);
+}
+::selection{background:var(--accent-soft);color:var(--ink)}
+@media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
+
+/* header: a thin red counter stripe under the ink rule */
+.top{box-shadow:0 4px 0 -2px var(--accent)}
+
+/* shared transitions for anything you can click or type in */
+.btn,.seg button,.tab,.icon-btn,.inp button,.linkbtn,select,.chip,.inp,.ta,.notes textarea,.switch input{
+  transition:background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out),transform var(--t-fast) var(--ease-out),filter var(--t-fast) var(--ease-out);
+}
+/* press feedback */
+.btn:active:not(:disabled),.icon-btn:active,.inp button:active,.seg button:active{transform:scale(.96)}
+.tab:active{transform:translateY(1px)}
+@media (hover:hover){.btn.ghost:hover{background:var(--surface-2)}}
+.btn.accent{box-shadow:var(--elev-1)}
+@media (hover:hover){.seg button:not([aria-pressed="true"]):hover{color:var(--ink);background:var(--surface-2)}}
+@media (hover:hover){select:hover{border-color:var(--ink-2)}}
+@media (hover:hover){.inp:hover:not(:focus-within){border-color:var(--ink-2)}}
+
+/* tabs: soft hover wash, underline eases in */
+.tab{border-radius:var(--r-s) var(--r-s) 0 0}
+@media (hover:hover){.tab:hover{background:var(--surface-2)}}
+
+/* panels ease in when you switch tabs */
+[role="tabpanel"]:not([hidden]){animation:panelIn var(--t-med) var(--ease-out)}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* depth on cards and the order slip */
+.card,.stats,.tcard,.add-card{box-shadow:var(--elev-1)}
+.slip{box-shadow:var(--elev-2)}
+.tcard{transition:box-shadow var(--t-med) var(--ease-out),border-color var(--t-med) var(--ease-out)}
+@media (hover:hover){.tcard:not(.editing):hover{box-shadow:var(--elev-2)}}
+.add-card{transition:border-color var(--t-med) var(--ease-out),background-color var(--t-med) var(--ease-out)}
+@media (hover:hover){.add-card:hover{border-color:var(--accent);background:var(--surface)}}
+
+/* list rows: gentle hover so you can track the row you're adjusting */
+.item,.trow,.shop-item,.saved-list li:not(.empty){transition:background-color var(--t-med) var(--ease-out)}
+@media (hover:hover){.item:not(.on):hover,.trow:not(.on):hover,.shop-item:hover{background:var(--surface)}}
+
+/* stat strip numbers sit a touch heavier */
+.stat .v{letter-spacing:-.01em}
+
+/* bigger hit areas on touch screens */
+@media (pointer: coarse){
+  .tab{min-height:48px}
+  .btn{min-height:44px}
+  .btn.sm{min-height:40px}
+  .inp,.inp.sm{min-height:44px}
+  .inp button{width:44px}
+  .seg button{min-height:36px;padding-inline:13px}
+  select{min-height:40px}
+  input[type=range]{height:32px}
+  .sw span{width:26px;height:26px}
+  .shop-item{grid-template-columns:28px minmax(0,1fr) auto}
+  .shop-item input{width:22px;height:22px;margin-top:1px}
+}
 </style>
 </head>
 <body>
